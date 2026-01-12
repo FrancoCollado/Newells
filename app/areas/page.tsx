@@ -1,0 +1,513 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { getCurrentUser, type User } from "@/lib/auth"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import {
+  ArrowLeft,
+  LogOut,
+  HeartPulse,
+  Brain,
+  Utensils,
+  Dumbbell,
+  Sparkles,
+  Plus,
+  FileText,
+  CalendarIcon,
+  Save,
+  Trash2,
+  Loader2,
+} from "lucide-react"
+import {
+  type AreaReport,
+  type AreaEvent,
+  getAreaReports,
+  getAreaEvents,
+  saveAreaReport,
+  saveAreaEvent,
+  deleteAreaReport,
+  deleteAreaEvent,
+} from "@/lib/areas"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
+export default function AreasPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [selectedArea, setSelectedArea] = useState<string>("medica")
+  const [reports, setReports] = useState<AreaReport[]>([])
+  const [events, setEvents] = useState<AreaEvent[]>([])
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  
+  // Pagination states
+  const [reportsPage, setReportsPage] = useState(0)
+  const [hasMoreReports, setHasMoreReports] = useState(true)
+  const [loadingMoreReports, setLoadingMoreReports] = useState(false)
+  const REPORTS_LIMIT = 10
+
+  // Form states
+  const [newReportTitle, setNewReportTitle] = useState("")
+  const [newReportContent, setNewReportContent] = useState("")
+  const [newEventTitle, setNewEventTitle] = useState("")
+  const [newEventDescription, setNewEventDescription] = useState("")
+  const [showNewReportForm, setShowNewReportForm] = useState(false)
+  const [showNewEventForm, setShowNewEventForm] = useState(false)
+  
+  // Loading & UI states
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "report" | "event" } | null>(null)
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true)
+      const currentUser = await getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
+      }
+      setLoading(false)
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    const loadAreaData = async () => {
+      if (!selectedArea) return
+      setLoading(true)
+      
+      // Reset pagination state
+      setReportsPage(0)
+      setHasMoreReports(true)
+
+      const [fetchedReports, fetchedEvents] = await Promise.all([
+        getAreaReports(selectedArea, 0, REPORTS_LIMIT),
+        getAreaEvents(selectedArea),
+      ])
+      
+      setReports(fetchedReports)
+      if (fetchedReports.length < REPORTS_LIMIT) setHasMoreReports(false)
+      
+      setEvents(fetchedEvents)
+      setLoading(false)
+    }
+    loadAreaData()
+  }, [selectedArea])
+
+  const handleLoadMoreReports = async () => {
+      if (!hasMoreReports) return
+      setLoadingMoreReports(true)
+      const nextPage = reportsPage + 1
+      const newReports = await getAreaReports(selectedArea, nextPage, REPORTS_LIMIT)
+
+      if (newReports.length < REPORTS_LIMIT) {
+          setHasMoreReports(false)
+      }
+
+      setReports([...reports, ...newReports])
+      setReportsPage(nextPage)
+      setLoadingMoreReports(false)
+  }
+
+  const handleLogout = () => {
+    router.push("/login")
+  }
+
+  const handleSaveReport = async () => {
+    if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
+
+    setActionLoading(true)
+    const newReport = await saveAreaReport({
+      area: selectedArea,
+      title: newReportTitle,
+      content: newReportContent,
+      createdBy: user.name,
+    })
+
+    if (newReport) {
+      setReports([newReport, ...reports])
+      setNewReportTitle("")
+      setNewReportContent("")
+      setShowNewReportForm(false)
+    }
+    setActionLoading(false)
+  }
+
+  const handleSaveEvent = async () => {
+    if (!newEventTitle.trim() || !selectedDate || !user) return
+
+    setActionLoading(true)
+    const newEvent = await saveAreaEvent({
+      area: selectedArea,
+      date: selectedDate,
+      title: newEventTitle,
+      description: newEventDescription,
+    })
+
+    if (newEvent) {
+      setEvents([...events, newEvent])
+      setNewEventTitle("")
+      setNewEventDescription("")
+      setShowNewEventForm(false)
+    }
+    setActionLoading(false)
+  }
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return
+
+    setActionLoading(true)
+    if (itemToDelete.type === "report") {
+      await deleteAreaReport(itemToDelete.id)
+      setReports(reports.filter((r) => r.id !== itemToDelete.id))
+    } else {
+      await deleteAreaEvent(itemToDelete.id)
+      setEvents(events.filter((e) => e.id !== itemToDelete.id))
+    }
+    setItemToDelete(null)
+    setActionLoading(false)
+  }
+
+  if (loading && !user) {
+     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-red-700" /></div>
+  }
+
+  if (!user) return null
+
+  const areas = [
+    { id: "medica", label: "Área Médica", icon: HeartPulse, color: "text-red-600" },
+    { id: "psicologica", label: "Área Psicológica", icon: Brain, color: "text-purple-600" },
+    { id: "nutricional", label: "Área Nutricional", icon: Utensils, color: "text-green-600" },
+    { id: "entrenamiento", label: "Área de Entrenamiento", icon: Dumbbell, color: "text-blue-600" },
+    { id: "fisioterapia", label: "Área de Fisioterapia", icon: Sparkles, color: "text-orange-600" },
+  ]
+
+  // Filter is redundant if we assume API returns correctly filtered data, but keeps UI consistent during optimistic updates if we change logic later
+  const areaReports = reports 
+  const areaEvents = events
+  const selectedDateEvents = areaEvents.filter(
+    (e) =>
+      selectedDate &&
+      e.date.getDate() === selectedDate.getDate() &&
+      e.date.getMonth() === selectedDate.getMonth() &&
+      e.date.getFullYear() === selectedDate.getFullYear(),
+  )
+
+  const eventDates = areaEvents.map((e) => e.date)
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+        <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/dashboard")}
+                  className="text-white hover:bg-white/20"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">Áreas Profesionales</h1>
+                  <p className="text-sm text-red-100">Gestión integral del cuerpo profesional</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-white/20">
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-8">
+          <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2">
+              {areas.map((area) => (
+                <TabsTrigger key={area.id} value={area.id} className="flex items-center gap-2">
+                  <area.icon className={`h-4 w-4 ${area.color}`} />
+                  <span className="hidden md:inline">{area.label}</span>
+                  <span className="md:hidden">{area.label.replace("Área de ", "").replace("Área ", "")}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {areas.map((area) => (
+              <TabsContent key={area.id} value={area.id} className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Calendar Section */}
+                  <Card className="lg:col-span-1">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CalendarIcon className={`h-5 w-5 ${area.color}`} />
+                        Calendario
+                      </CardTitle>
+                      <CardDescription>Eventos y actividades programadas</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        className="rounded-md border"
+                        modifiers={{
+                          event: eventDates,
+                        }}
+                        modifiersClassNames={{
+                          event: "bg-red-100 text-red-900 font-bold",
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent"
+                        onClick={() => setShowNewEventForm(!showNewEventForm)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Evento
+                      </Button>
+
+                      {showNewEventForm && (
+                        <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                          <div>
+                            <Label>Título del Evento</Label>
+                            <Input
+                              value={newEventTitle}
+                              onChange={(e) => setNewEventTitle(e.target.value)}
+                              placeholder="Ej: Chequeo médico"
+                            />
+                          </div>
+                          <div>
+                            <Label>Descripción</Label>
+                            <Textarea
+                              value={newEventDescription}
+                              onChange={(e) => setNewEventDescription(e.target.value)}
+                              placeholder="Detalles del evento..."
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveEvent} className="flex-1" disabled={actionLoading}>
+                              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                              Guardar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setShowNewEventForm(false)}
+                              className="flex-1"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedDate && selectedDateEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-sm">Eventos del día:</h4>
+                          {selectedDateEvents.map((event) => (
+                            <div key={event.id} className="p-3 bg-muted rounded-lg space-y-1">
+                              <div className="flex items-start justify-between">
+                                <p className="font-medium text-sm">{event.title}</p>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setItemToDelete({ id: event.id, type: "event" })}
+                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              {event.description && (
+                                <p className="text-xs text-muted-foreground">{event.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Reports Section */}
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <FileText className={`h-5 w-5 ${area.color}`} />
+                            Informes Generales
+                          </CardTitle>
+                          <CardDescription>Reportes y documentación del área</CardDescription>
+                        </div>
+                        <Button onClick={() => setShowNewReportForm(!showNewReportForm)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Nuevo Informe
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {showNewReportForm && (
+                        <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                          <div>
+                            <Label>Título del Informe</Label>
+                            <Input
+                              value={newReportTitle}
+                              onChange={(e) => setNewReportTitle(e.target.value)}
+                              placeholder="Ej: Informe mensual de lesiones"
+                            />
+                          </div>
+                          <div>
+                            <Label>Contenido</Label>
+                            <Textarea
+                              value={newReportContent}
+                              onChange={(e) => setNewReportContent(e.target.value)}
+                              placeholder="Escribe el contenido del informe..."
+                              rows={6}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={handleSaveReport} className="flex-1" disabled={actionLoading}>
+                              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                              Guardar Informe
+                            </Button>
+                            <Button variant="outline" onClick={() => setShowNewReportForm(false)} className="flex-1">
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {loading ? (
+                         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-red-700" /></div>
+                      ) : areaReports.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p>No hay informes registrados para esta área</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                          {areaReports.map((report) => (
+                            <div key={report.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-lg">{report.title}</h4>
+                                  <div className="flex items-center gap-3 mt-1">
+                                    <Badge variant="outline" className="text-xs">
+                                      {new Date(report.date).toLocaleDateString("es-AR")}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">Por: {report.createdBy}</span>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setItemToDelete({ id: report.id, type: "report" })}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.content}</p>
+                            </div>
+                          ))}
+                          {hasMoreReports && (
+                              <div className="text-center pt-2">
+                                  <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      onClick={handleLoadMoreReports} 
+                                      disabled={loadingMoreReports}
+                                      className="text-muted-foreground hover:text-foreground"
+                                  >
+                                      {loadingMoreReports ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cargar más informes"}
+                                  </Button>
+                              </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Additional Info Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <area.icon className={`h-5 w-5 ${area.color}`} />
+                      Información Importante - {area.label}
+                    </CardTitle>
+                    <CardDescription>Datos relevantes y protocolos del área</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="font-semibold mb-2">Contactos de Emergencia</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Información de contacto para situaciones urgentes relacionadas con {area.label.toLowerCase()}
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="font-semibold mb-2">Protocolos Activos</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Procedimientos y protocolos actuales del {area.label.toLowerCase()}
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="font-semibold mb-2">Estadísticas</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Datos y métricas relevantes del {area.label.toLowerCase()}
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="font-semibold mb-2">Recursos</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Materiales y recursos disponibles para el {area.label.toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </main>
+
+        <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente el {itemToDelete?.type === "report" ? "informe" : "evento"} seleccionado.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90" disabled={actionLoading}>
+                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+                </AlertDialog>
+              </div>
+          )
+        }
+        
