@@ -7,6 +7,7 @@ export type UserRole =
   | "nutricionista"
   | "fisioterapeuta"
   | "dirigente"
+  | "administrador"
 
 export interface User {
   id: string
@@ -74,6 +75,7 @@ export function getRoleLabel(role: UserRole): string {
     nutricionista: "Nutricionista",
     fisioterapeuta: "Fisioterapeuta",
     dirigente: "Dirigente",
+    administrador: "Administrador",
   }
   return labels[role]
 }
