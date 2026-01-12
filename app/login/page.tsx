@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { login } from "@/lib/auth"
-import { Loader2 } from "lucide-react"
+import { isSupabaseConfigured } from "@/lib/supabase"
+import { Loader2, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,26 +25,28 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
 
-    console.log("Iniciando proceso de login...")
+    console.log("[v0] Iniciando proceso de login...")
 
     try {
-        const user = await login(email, password)
-        console.log("Resultado login:", user)
+      const user = await login(email, password)
+      console.log("[v0] Resultado login:", user)
 
-        if (user) {
-          console.log("Login exitoso, guardando usuario y redirigiendo...")
-          // Usamos window.location.href en lugar de router.push para asegurar
-          // que las cookies de sesión se envíen correctamente al servidor (Middleware)
-          window.location.href = "/dashboard"
-        } else {
-          console.log("Login fallido: credenciales incorrectas")
-          setError("Credenciales incorrectas")
-        }
+      if (user) {
+        console.log("[v0] Login exitoso, guardando usuario y redirigiendo...")
+        window.location.href = "/dashboard"
+      } else {
+        console.log("[v0] Login fallido: credenciales incorrectas")
+        setError("Credenciales incorrectas. Verifica tu email y contraseña.")
+      }
     } catch (e) {
-        console.error("Excepción en login:", e)
-        setError("Ocurrió un error al iniciar sesión")
+      console.error("[v0] Excepción en login:", e)
+      if (e instanceof Error && e.message.includes("Supabase no está configurado")) {
+        setError("Error de configuración: La conexión a la base de datos no está configurada.")
+      } else {
+        setError("Ocurrió un error al iniciar sesión. Por favor intenta nuevamente.")
+      }
     } finally {
-        setLoading(false)
+      setLoading(false)
     }
   }
 
@@ -53,6 +57,17 @@ export default function LoginPage() {
           <h1 className="text-4xl font-bold text-white mb-2">Newell's Old Boys</h1>
           <p className="text-red-200">Sistema de Gestión Deportiva</p>
         </div>
+
+        {!isSupabaseConfigured && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Configuración Requerida</AlertTitle>
+            <AlertDescription>
+              La integración con Supabase no está configurada. Necesitas agregar las variables de entorno desde el panel
+              de configuración.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card className="border-red-900">
           <CardHeader>
@@ -70,6 +85,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={!isSupabaseConfigured}
                 />
               </div>
 
@@ -81,12 +97,17 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={!isSupabaseConfigured}
                 />
               </div>
 
               {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
 
-              <Button type="submit" className="w-full bg-red-700 hover:bg-red-800" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full bg-red-700 hover:bg-red-800"
+                disabled={loading || !isSupabaseConfigured}
+              >
                 {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
                 {loading ? "Ingresando..." : "Ingresar"}
               </Button>

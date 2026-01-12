@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { PlayerIndicesManager } from "@/components/player-indices-manager"
 import {
   ArrowLeft,
   UserIcon,
@@ -28,6 +29,7 @@ import {
   Goal,
   Activity,
   Loader2,
+  BarChart3,
 } from "lucide-react"
 
 export default function PlayerDetailPage() {
@@ -39,16 +41,17 @@ export default function PlayerDetailPage() {
   const [isEditingReport, setIsEditingReport] = useState(false)
   const [editedReport, setEditedReport] = useState("")
   const [loading, setLoading] = useState(true)
+  const [showIndicesModal, setShowIndicesModal] = useState(false)
 
   useEffect(() => {
     const init = async () => {
       setLoading(true)
       const playerId = params.id as string
-      
+
       const [currentUser, foundPlayer, allReports] = await Promise.all([
         getCurrentUser(),
         getPlayerById(playerId),
-        getReportsByPlayerId(playerId)
+        getReportsByPlayerId(playerId),
       ])
 
       if (currentUser) {
@@ -61,7 +64,7 @@ export default function PlayerDetailPage() {
         const sortedReports = allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         setRecentReports(sortedReports.slice(0, 5))
       }
-      
+
       setLoading(false)
     }
     init()
@@ -74,20 +77,23 @@ export default function PlayerDetailPage() {
 
   const handleSaveReport = async () => {
     if (!player) return
-    
-    // Optimistic update
+
     const updatedPlayer = { ...player, technicalReport: editedReport }
     setPlayer(updatedPlayer)
     setIsEditingReport(false)
-    
+
     await updatePlayerTechnicalReport(player.id, editedReport)
   }
 
   if (loading) {
-     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-red-700" /></div>
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8 text-red-700" />
+      </div>
+    )
   }
 
-  if (!user) return null // AuthGuard handles redirect
+  if (!user) return null
 
   if (!player) {
     return (
@@ -106,11 +112,11 @@ export default function PlayerDetailPage() {
   }
 
   const canEdit = user.role === "dirigente" || user.role === "entrenador"
+  const canViewIndices = user.role === "dirigente" || user.role === "entrenador"
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background">
-        {/* Header */}
         <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
           <div className="container mx-auto px-4 py-4">
             <Button
@@ -133,11 +139,8 @@ export default function PlayerDetailPage() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="container mx-auto px-4 py-8">
-          {/* Player Info */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Left Column - Photo and Basic Info */}
             <Card className="lg:col-span-1">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center">
@@ -155,11 +158,21 @@ export default function PlayerDetailPage() {
                       Lesionado
                     </Badge>
                   )}
+
+                  {canViewIndices && (
+                    <Button
+                      onClick={() => setShowIndicesModal(true)}
+                      variant="outline"
+                      className="mt-4 w-full border-red-700 text-red-700 hover:bg-red-50"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Índices Individuales
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Right Column - Detailed Stats */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Información Básica</CardTitle>
@@ -272,7 +285,6 @@ export default function PlayerDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Reports Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -313,6 +325,15 @@ export default function PlayerDetailPage() {
             </CardContent>
           </Card>
         </main>
+
+        {showIndicesModal && user && player && (
+          <PlayerIndicesManager
+            playerId={player.id}
+            playerName={player.name}
+            userId={user.id}
+            onClose={() => setShowIndicesModal(false)}
+          />
+        )}
       </div>
     </AuthGuard>
   )
