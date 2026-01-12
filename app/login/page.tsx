@@ -91,12 +91,6 @@ export default function LoginPage() {
                 {loading ? "Ingresando..." : "Ingresar"}
               </Button>
             </form>
-
-            <div className="mt-6 p-4 bg-muted rounded text-sm space-y-1">
-              <p className="font-semibold">Usuarios de prueba:</p>
-              <p>medico@newells.com / medico123</p>
-              <p>dirigente@newells.com / dirigente123</p>
-            </div>
           </CardContent>
         </Card>
       </div>
