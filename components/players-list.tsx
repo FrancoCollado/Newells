@@ -1,14 +1,23 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getPlayersByDivision, getDivisionLabel, type Division, type Player } from "@/lib/players"
+import {
+  getPlayersByDivision,
+  getDivisionLabel,
+  updatePlayerAttendance,
+  type Division,
+  type Player,
+} from "@/lib/players"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, User, Loader2 } from "lucide-react"
+import { Search, User, Loader2, Edit2, Save, X } from "lucide-react"
 import type { UserRole } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 
 interface PlayersListProps {
   division?: Division
@@ -17,14 +26,19 @@ interface PlayersListProps {
 
 export function PlayersList({ division, userRole }: PlayersListProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [editingAttendanceId, setEditingAttendanceId] = useState<string | null>(null)
+  const [editingAttendanceValue, setEditingAttendanceValue] = useState("")
 
   const ITEMS_PER_PAGE = 9
+
+  const canEdit = userRole === "dirigente" || userRole === "entrenador"
 
   useEffect(() => {
     const fetchInitialPlayers = async () => {
@@ -40,30 +54,74 @@ export function PlayersList({ division, userRole }: PlayersListProps) {
   }, [division])
 
   const handleLoadMore = async () => {
-      setLoadingMore(true)
-      const nextPage = page + 1
-      const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE)
-      
-      if (newPlayers.length < ITEMS_PER_PAGE) {
-          setHasMore(false)
-      }
-      
-      setPlayers([...players, ...newPlayers])
-      setPage(nextPage)
-      setLoadingMore(false)
+    setLoadingMore(true)
+    const nextPage = page + 1
+    const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE)
+
+    if (newPlayers.length < ITEMS_PER_PAGE) {
+      setHasMore(false)
+    }
+
+    setPlayers([...players, ...newPlayers])
+    setPage(nextPage)
+    setLoadingMore(false)
   }
 
   const filteredPlayers = players.filter((player) => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
   const handlePlayerClick = (playerId: string) => {
+    if (editingAttendanceId === playerId) return // Don't navigate if editing
     router.push(`/player/${playerId}`)
+  }
+
+  const handleEditAttendance = (e: React.MouseEvent, player: Player) => {
+    e.stopPropagation()
+    setEditingAttendanceId(player.id)
+    setEditingAttendanceValue(player.attendancePercentage.toString())
+  }
+
+  const handleSaveAttendance = async (e: React.MouseEvent, playerId: string) => {
+    e.stopPropagation()
+    const value = Number.parseFloat(editingAttendanceValue)
+
+    if (isNaN(value) || value < 0 || value > 100) {
+      toast({
+        title: "Error",
+        description: "El porcentaje debe estar entre 0 y 100",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const success = await updatePlayerAttendance(playerId, value)
+
+    if (success) {
+      setPlayers(players.map((p) => (p.id === playerId ? { ...p, attendancePercentage: value } : p)))
+      setEditingAttendanceId(null)
+      toast({
+        title: "Asistencia actualizada",
+        description: "El porcentaje de asistencia se actualizó correctamente",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el porcentaje",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingAttendanceId(null)
+    setEditingAttendanceValue("")
   }
 
   if (loading) {
     return (
-        <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-red-700" />
-        </div>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-red-700" />
+      </div>
     )
   }
 
@@ -91,10 +149,56 @@ export function PlayersList({ division, userRole }: PlayersListProps) {
           {filteredPlayers.map((player) => (
             <Card
               key={player.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
+              className="hover:shadow-lg transition-shadow cursor-pointer relative"
               onClick={() => handlePlayerClick(player.id)}
             >
-              <CardContent className="p-4">
+              <div className="absolute top-2 left-2 z-10">
+                {editingAttendanceId === player.id ? (
+                  <div
+                    className="flex items-center gap-1 bg-white rounded-lg shadow-lg p-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editingAttendanceValue}
+                      onChange={(e) => setEditingAttendanceValue(e.target.value)}
+                      className="w-16 h-7 text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-xs">%</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={(e) => handleSaveAttendance(e, player.id)}
+                    >
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancelEdit}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge
+                    className={`${
+                      player.attendancePercentage >= 80
+                        ? "bg-green-600"
+                        : player.attendancePercentage >= 60
+                          ? "bg-yellow-600"
+                          : "bg-red-600"
+                    } text-white hover:opacity-90 flex items-center gap-1`}
+                  >
+                    {player.attendancePercentage}% Asistencia
+                    {canEdit && (
+                      <Edit2 className="h-3 w-3 ml-1 cursor-pointer" onClick={(e) => handleEditAttendance(e, player)} />
+                    )}
+                  </Badge>
+                )}
+              </div>
+
+              <CardContent className="p-4 pt-12">
                 <div className="flex items-start gap-3">
                   <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                     <User className="h-6 w-6 text-red-700" />
@@ -131,16 +235,16 @@ export function PlayersList({ division, userRole }: PlayersListProps) {
       )}
 
       {hasMore && !searchTerm && (
-          <div className="flex justify-center pt-4">
-              <Button 
-                variant="outline" 
-                onClick={handleLoadMore} 
-                disabled={loadingMore}
-                className="w-full md:w-auto"
-              >
-                  {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cargar más jugadores"}
-              </Button>
-          </div>
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="w-full md:w-auto bg-transparent"
+          >
+            {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cargar más jugadores"}
+          </Button>
+        </div>
       )}
     </div>
   )

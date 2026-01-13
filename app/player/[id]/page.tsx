@@ -4,14 +4,22 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
 import { getCurrentUser, type User } from "@/lib/auth"
-import { getPlayerById, getDivisionLabel, updatePlayerTechnicalReport, type Player } from "@/lib/players"
+import {
+  getPlayerById,
+  getDivisionLabel,
+  updatePlayerTechnicalReport,
+  updatePlayerAttendance,
+  type Player,
+} from "@/lib/players"
 import { getReportsByPlayerId, type Report } from "@/lib/reports"
 import { ReportCard } from "@/components/report-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { PlayerIndicesManager } from "@/components/player-indices-manager"
+import { useToast } from "@/hooks/use-toast"
 import {
   ArrowLeft,
   UserIcon,
@@ -30,11 +38,13 @@ import {
   Activity,
   Loader2,
   BarChart3,
+  Percent,
 } from "lucide-react"
 
 export default function PlayerDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [player, setPlayer] = useState<Player | null>(null)
   const [recentReports, setRecentReports] = useState<Report[]>([])
@@ -42,6 +52,8 @@ export default function PlayerDetailPage() {
   const [editedReport, setEditedReport] = useState("")
   const [loading, setLoading] = useState(true)
   const [showIndicesModal, setShowIndicesModal] = useState(false)
+  const [isEditingAttendance, setIsEditingAttendance] = useState(false)
+  const [editedAttendance, setEditedAttendance] = useState("")
 
   useEffect(() => {
     const init = async () => {
@@ -61,6 +73,7 @@ export default function PlayerDetailPage() {
       if (foundPlayer) {
         setPlayer(foundPlayer)
         setEditedReport(foundPlayer.technicalReport || "")
+        setEditedAttendance(foundPlayer.attendancePercentage.toString())
         const sortedReports = allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         setRecentReports(sortedReports.slice(0, 5))
       }
@@ -83,6 +96,43 @@ export default function PlayerDetailPage() {
     setIsEditingReport(false)
 
     await updatePlayerTechnicalReport(player.id, editedReport)
+  }
+
+  const handleSaveAttendance = async () => {
+    if (!player) return
+
+    const value = Number.parseFloat(editedAttendance)
+
+    if (isNaN(value) || value < 0 || value > 100) {
+      toast({
+        title: "Error",
+        description: "El porcentaje debe estar entre 0 y 100",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const success = await updatePlayerAttendance(player.id, value)
+
+    if (success) {
+      setPlayer({ ...player, attendancePercentage: value })
+      setIsEditingAttendance(false)
+      toast({
+        title: "Asistencia actualizada",
+        description: "El porcentaje de asistencia se actualizó correctamente",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el porcentaje",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCancelAttendanceEdit = () => {
+    setIsEditingAttendance(false)
+    setEditedAttendance(player?.attendancePercentage.toString() || "100")
   }
 
   if (loading) {
@@ -220,6 +270,62 @@ export default function PlayerDetailPage() {
                     <Goal className="h-8 w-8 text-red-700 mb-2" />
                     <p className="text-2xl font-bold">{player.goals}</p>
                     <p className="text-sm text-muted-foreground">Goles</p>
+                  </div>
+
+                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg relative">
+                    <Percent
+                      className={`h-8 w-8 mb-2 ${
+                        player.attendancePercentage >= 80
+                          ? "text-green-600"
+                          : player.attendancePercentage >= 60
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                      }`}
+                    />
+                    {isEditingAttendance ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={editedAttendance}
+                          onChange={(e) => setEditedAttendance(e.target.value)}
+                          className="w-16 h-8 text-center"
+                        />
+                        <span className="text-sm">%</span>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold">{player.attendancePercentage}%</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">Asistencia</p>
+                    {canEdit && (
+                      <div className="absolute top-2 right-2">
+                        {isEditingAttendance ? (
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveAttendance}>
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={handleCancelAttendanceEdit}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => setIsEditingAttendance(true)}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center p-4 bg-muted rounded-lg">

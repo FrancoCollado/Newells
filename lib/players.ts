@@ -30,6 +30,7 @@ export interface Player {
   isInjured: boolean // Estado de lesión
   technicalReport?: string // Informe técnico del jugador (editable por dirigente/técnicos)
   goals: number // Total de goles marcados
+  attendancePercentage: number // Porcentaje de asistencia (0-100)
 }
 
 export const MOCK_PLAYERS: Player[] = [
@@ -46,6 +47,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "2",
@@ -59,6 +61,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 
   // Reserva
@@ -74,6 +77,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "6",
@@ -87,6 +91,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 
   // 5ta División
@@ -102,6 +107,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "8",
@@ -115,6 +121,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 
   // 7ma División
@@ -130,6 +137,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "10",
@@ -143,6 +151,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 
   // 9na División
@@ -158,6 +167,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "12",
@@ -171,6 +181,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 
   // Arqueros
@@ -186,6 +197,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
   {
     id: "14",
@@ -199,6 +211,7 @@ export const MOCK_PLAYERS: Player[] = [
     matchesPlayed: 0,
     isInjured: false,
     goals: 0,
+    attendancePercentage: 100,
   },
 ]
 
@@ -237,32 +250,34 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
     technicalReport: dbPlayer.technical_report,
     goals: dbPlayer.goals,
     photo: dbPlayer.photo,
+    attendancePercentage: dbPlayer.attendance_percentage ?? 100,
   }
 }
 
 // Optimized seeding check
 async function checkAndSeedPlayers() {
-    const { count, error } = await supabase.from("players").select("*", { count: "exact", head: true })
-    
-    if (!error && count === 0) {
-        console.log("Database empty, seeding players...")
-        const { error: insertError } = await supabase.from("players").insert(
-          MOCK_PLAYERS.map((p) => ({
-            name: p.name,
-            division: p.division,
-            age: p.age,
-            position: p.position,
-            height: p.height,
-            weight: p.weight,
-            minutes_played: p.minutesPlayed,
-            matches_played: p.matchesPlayed,
-            is_injured: p.isInjured,
-            technical_report: p.technicalReport,
-            goals: p.goals,
-          })),
-        )
-        if (insertError) console.error("Error seeding players:", insertError)
-    }
+  const { count, error } = await supabase.from("players").select("*", { count: "exact", head: true })
+
+  if (!error && count === 0) {
+    console.log("Database empty, seeding players...")
+    const { error: insertError } = await supabase.from("players").insert(
+      MOCK_PLAYERS.map((p) => ({
+        name: p.name,
+        division: p.division,
+        age: p.age,
+        position: p.position,
+        height: p.height,
+        weight: p.weight,
+        minutes_played: p.minutesPlayed,
+        matches_played: p.matchesPlayed,
+        is_injured: p.isInjured,
+        technical_report: p.technicalReport,
+        goals: p.goals,
+        attendance_percentage: p.attendancePercentage,
+      })),
+    )
+    if (insertError) console.error("Error seeding players:", insertError)
+  }
 }
 
 // Main getPlayers function (Fixed duplication)
@@ -280,7 +295,12 @@ export async function getPlayers(): Promise<Player[]> {
   return data.map(mapDatabasePlayerToAppPlayer)
 }
 
-export async function getPlayersByDivision(division?: Division | "todas", page = 0, limit = 20, searchTerm?: string): Promise<Player[]> {
+export async function getPlayersByDivision(
+  division?: Division | "todas",
+  page = 0,
+  limit = 20,
+  searchTerm?: string,
+): Promise<Player[]> {
   const from = page * limit
   const to = from + limit - 1
 
@@ -300,24 +320,20 @@ export async function getPlayersByDivision(division?: Division | "todas", page =
     console.error("Error fetching players:", error)
     return []
   }
-  
+
   if (!data || data.length === 0) {
-     if (page === 0 && !division && !searchTerm) {
-         const allPlayers = await getPlayers() 
-         return allPlayers.slice(0, limit)
-     }
-     return []
+    if (page === 0 && !division && !searchTerm) {
+      const allPlayers = await getPlayers()
+      return allPlayers.slice(0, limit)
+    }
+    return []
   }
 
   return data.map(mapDatabasePlayerToAppPlayer)
 }
 
 export async function getPlayerById(id: string): Promise<Player | undefined> {
-  const { data, error } = await supabase
-    .from("players")
-    .select("*")
-    .eq("id", id)
-    .single()
+  const { data, error } = await supabase.from("players").select("*").eq("id", id).single()
 
   if (error || !data) return undefined
   return mapDatabasePlayerToAppPlayer(data)
@@ -342,73 +358,80 @@ export async function updatePlayerStats(
 }
 
 export async function updatePlayerTechnicalReport(playerId: string, technicalReport: string): Promise<void> {
-  const { error } = await supabase
-    .from("players")
-    .update({ technical_report: technicalReport })
-    .eq("id", playerId)
+  const { error } = await supabase.from("players").update({ technical_report: technicalReport }).eq("id", playerId)
 
   if (error) {
     console.error("Error updating technical report:", error)
   }
 }
 
-export async function createPlayer(player: Omit<Player, "id" | "minutesPlayed" | "matchesPlayed" | "isInjured" | "goals">): Promise<Player | null> {
-    const { data, error } = await supabase
-        .from("players")
-        .insert({
-            name: player.name,
-            division: player.division,
-            age: player.age,
-            position: player.position,
-            height: player.height,
-            weight: player.weight,
-            photo: player.photo
-        })
-        .select()
-        .single()
+export async function updatePlayerAttendance(playerId: string, attendancePercentage: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("players")
+    .update({ attendance_percentage: attendancePercentage })
+    .eq("id", playerId)
 
-    if (error) {
-        console.error("Error creating player:", error)
-        return null
-    }
+  if (error) {
+    console.error("Error updating attendance percentage:", error)
+    return false
+  }
 
-    return mapDatabasePlayerToAppPlayer(data)
+  return true
+}
+
+export async function createPlayer(
+  player: Omit<Player, "id" | "minutesPlayed" | "matchesPlayed" | "isInjured" | "goals" | "attendancePercentage">,
+): Promise<Player | null> {
+  const { data, error } = await supabase
+    .from("players")
+    .insert({
+      name: player.name,
+      division: player.division,
+      age: player.age,
+      position: player.position,
+      height: player.height,
+      weight: player.weight,
+      photo: player.photo,
+      attendance_percentage: 100,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error("Error creating player:", error)
+    return null
+  }
+
+  return mapDatabasePlayerToAppPlayer(data)
 }
 
 export async function updatePlayer(id: string, player: Partial<Player>): Promise<Player | null> {
-    const updateData: any = {}
-    if (player.name) updateData.name = player.name
-    if (player.division) updateData.division = player.division
-    if (player.age) updateData.age = player.age
-    if (player.position) updateData.position = player.position
-    if (player.height) updateData.height = player.height
-    if (player.weight) updateData.weight = player.weight
-    if (player.photo) updateData.photo = player.photo
+  const updateData: any = {}
+  if (player.name) updateData.name = player.name
+  if (player.division) updateData.division = player.division
+  if (player.age) updateData.age = player.age
+  if (player.position) updateData.position = player.position
+  if (player.height) updateData.height = player.height
+  if (player.weight) updateData.weight = player.weight
+  if (player.photo) updateData.photo = player.photo
+  if (player.attendancePercentage !== undefined) updateData.attendance_percentage = player.attendancePercentage
 
-    const { data, error } = await supabase
-        .from("players")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single()
+  const { data, error } = await supabase.from("players").update(updateData).eq("id", id).select().single()
 
-    if (error) {
-        console.error("Error updating player:", error)
-        return null
-    }
-    
-    return mapDatabasePlayerToAppPlayer(data)
+  if (error) {
+    console.error("Error updating player:", error)
+    return null
+  }
+
+  return mapDatabasePlayerToAppPlayer(data)
 }
 
 export async function deletePlayer(id: string): Promise<boolean> {
-    const { error } = await supabase
-        .from("players")
-        .delete()
-        .eq("id", id)
+  const { error } = await supabase.from("players").delete().eq("id", id)
 
-    if (error) {
-        console.error("Error deleting player:", error)
-        return false
-    }
-    return true
+  if (error) {
+    console.error("Error deleting player:", error)
+    return false
+  }
+  return true
 }
