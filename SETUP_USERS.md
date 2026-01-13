@@ -60,9 +60,9 @@ Después de crear los usuarios, verifica:
 
 1. Ve a `/login` y prueba cada usuario
 2. Verifica que se haya creado el perfil en la tabla `profiles` (SQL Editor):
-   ```sql
+   \`\`\`sql
    SELECT * FROM public.profiles;
-   ```
+   \`\`\`
 
 ## Permisos por Rol
 

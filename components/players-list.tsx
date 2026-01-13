@@ -10,6 +10,7 @@ import {
   updatePlayerAttendance,
   type Division,
   type Player,
+  type LeagueType,
 } from "@/lib/players"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,9 +23,10 @@ import { useToast } from "@/hooks/use-toast"
 interface PlayersListProps {
   division?: Division
   userRole: UserRole
+  leagueType?: LeagueType | "PRESTAMO" | "all"
 }
 
-export function PlayersList({ division, userRole }: PlayersListProps) {
+export function PlayersList({ division, userRole, leagueType }: PlayersListProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
@@ -45,18 +47,22 @@ export function PlayersList({ division, userRole }: PlayersListProps) {
       setLoading(true)
       setPage(0)
       setHasMore(true)
-      const data = await getPlayersByDivision(division, 0, ITEMS_PER_PAGE)
+      const leagueFilter = leagueType === "all" ? "todas" : leagueType
+      console.log("[v0] PlayersList fetching with:", { division, leagueFilter })
+      const data = await getPlayersByDivision(division, 0, ITEMS_PER_PAGE, "", leagueFilter)
+      console.log("[v0] PlayersList received:", data.length, "players")
       setPlayers(data)
       if (data.length < ITEMS_PER_PAGE) setHasMore(false)
       setLoading(false)
     }
     fetchInitialPlayers()
-  }, [division])
+  }, [division, leagueType])
 
   const handleLoadMore = async () => {
     setLoadingMore(true)
     const nextPage = page + 1
-    const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE)
+    const leagueFilter = leagueType === "all" ? "todas" : leagueType
+    const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE, "", leagueFilter)
 
     if (newPlayers.length < ITEMS_PER_PAGE) {
       setHasMore(false)

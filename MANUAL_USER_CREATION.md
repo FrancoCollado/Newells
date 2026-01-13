@@ -7,9 +7,9 @@ Antes de crear usuarios, **DEBES** ejecutar el script de creación de la tabla p
 1. Ve al SQL Editor de Supabase: https://supabase.com/dashboard/project/jhhjkkgzoadtlfldlvsi/sql
 2. Copia y ejecuta el contenido del archivo: `scripts/000_create_profiles_table.sql`
 3. Verifica que se creó correctamente:
-   ```sql
+   \`\`\`sql
    SELECT * FROM public.profiles;
-   ```
+   \`\`\`
 
 Este script crea:
 - La tabla `profiles` con campos: id, email, name, role, created_at, updated_at
@@ -29,66 +29,66 @@ Este script crea:
 - **Password**: `newells123`
 - **Auto Confirm User**: ✅ (activado)
 - **User Metadata** (JSON):
-```json
+\`\`\`json
 {
   "name": "Administrador 1",
   "role": "administrador"
 }
-```
+\`\`\`
 
 ### Usuario 2: Dirigente
 - **Email**: `dirigente1@newells.com`
 - **Password**: `newells123`
 - **Auto Confirm User**: ✅ (activado)
 - **User Metadata** (JSON):
-```json
+\`\`\`json
 {
   "name": "Dirigente 1",
   "role": "dirigente"
 }
-```
+\`\`\`
 
 ### Usuario 3: Entrenador
 - **Email**: `entrenador1@newells.com`
 - **Password**: `newells123`
 - **Auto Confirm User**: ✅ (activado)
 - **User Metadata** (JSON):
-```json
+\`\`\`json
 {
   "name": "Entrenador 1",
   "role": "entrenador"
 }
-```
+\`\`\`
 
 ### Usuario 4: Médico
 - **Email**: `medico1@newells.com`
 - **Password**: `newells123`
 - **Auto Confirm User**: ✅ (activado)
 - **User Metadata** (JSON):
-```json
+\`\`\`json
 {
   "name": "Médico 1",
   "role": "medico"
 }
-```
+\`\`\`
 
 ### Usuario 5: Psicólogo
 - **Email**: `psicologo1@newells.com`
 - **Password**: `newells123`
 - **Auto Confirm User**: ✅ (activado)
 - **User Metadata** (JSON):
-```json
+\`\`\`json
 {
   "name": "Psicólogo 1",
   "role": "psicologo"
 }
-```
+\`\`\`
 
 ## PASO 3: Verificar la Creación
 
 Cuando crees cada usuario, el trigger automático creará su perfil en `public.profiles`. Verifica:
 
-```sql
+\`\`\`sql
 -- Ver todos los perfiles creados
 SELECT id, email, name, role, created_at 
 FROM public.profiles 
@@ -102,7 +102,7 @@ SELECT
   p.role
 FROM auth.users au
 LEFT JOIN public.profiles p ON au.id = p.id;
-```
+\`\`\`
 
 ## ¿Por Qué Necesitamos la Tabla Profiles?
 
@@ -120,25 +120,25 @@ LEFT JOIN public.profiles p ON au.id = p.id;
 
 ### No se crea el perfil automáticamente
 - Verifica que el trigger `on_auth_user_created` existe:
-  ```sql
+  \`\`\`sql
   SELECT * FROM pg_trigger WHERE tgname = 'on_auth_user_created';
-  ```
+  \`\`\`
 - Re-ejecuta el script `000_create_profiles_table.sql`
 
 ### El login falla después de crear el usuario
 - Verifica que el perfil se haya creado:
-  ```sql
+  \`\`\`sql
   SELECT * FROM public.profiles WHERE email = 'admin1@newells.com';
-  ```
+  \`\`\`
 - Si no existe, créalo manualmente:
-  ```sql
+  \`\`\`sql
   INSERT INTO public.profiles (id, email, name, role)
   SELECT id, email, 
          raw_user_meta_data->>'name' as name,
          raw_user_meta_data->>'role' as role
   FROM auth.users 
   WHERE email = 'admin1@newells.com';
-  ```
+  \`\`\`
 
 ## Permisos por Rol
 

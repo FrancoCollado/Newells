@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
 import type { PlayerExtendedData } from "@/lib/players"
 import { FileText } from "lucide-react"
 
@@ -30,7 +31,7 @@ export function ExtendedPlayerDataDialog({
     setFormData(extendedData || {})
   }, [extendedData])
 
-  const handleChange = (field: keyof PlayerExtendedData, value: string | boolean) => {
+  const handleChange = (field: keyof PlayerExtendedData, value: string | boolean | number) => {
     const updated = { ...formData, [field]: value === "" ? undefined : value }
     setFormData(updated)
     if (!readOnly) {
@@ -88,6 +89,16 @@ export function ExtendedPlayerDataDialog({
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="citizenship">Ciudadanía</Label>
+                  <Input
+                    id="citizenship"
+                    placeholder="Ej: Argentina"
+                    value={formData.citizenship || ""}
+                    onChange={(e) => handleChange("citizenship", e.target.value)}
+                    disabled={readOnly}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="admissionDate">Fecha de Ingreso</Label>
                   <Input
                     id="admissionDate"
@@ -111,6 +122,16 @@ export function ExtendedPlayerDataDialog({
                     placeholder="Ej: +54 341 123-4567"
                     value={formData.phone || ""}
                     onChange={(e) => handleChange("phone", e.target.value)}
+                    disabled={readOnly}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="parentsPhone">Tel Padres</Label>
+                  <Input
+                    id="parentsPhone"
+                    placeholder="Ej: +54 341 987-6543"
+                    value={formData.parentsPhone || ""}
+                    onChange={(e) => handleChange("parentsPhone", e.target.value)}
                     disabled={readOnly}
                   />
                 </div>
@@ -208,6 +229,16 @@ export function ExtendedPlayerDataDialog({
                     disabled={readOnly}
                   />
                 </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="representative">Representante</Label>
+                  <Input
+                    id="representative"
+                    placeholder="Nombre del representante deportivo"
+                    value={formData.representative || ""}
+                    onChange={(e) => handleChange("representative", e.target.value)}
+                    disabled={readOnly}
+                  />
+                </div>
               </div>
             </div>
 
@@ -253,53 +284,193 @@ export function ExtendedPlayerDataDialog({
               </div>
             </div>
 
-            {/* Documentación Legal */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-red-700">Documentación Legal</h3>
+              <h3 className="text-sm font-semibold text-red-700">Documentos Legales</h3>
               <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isFreePlayer"
-                    checked={formData.isFreePlayer || false}
-                    onCheckedChange={(checked) => handleChange("isFreePlayer", checked as boolean)}
-                    disabled={readOnly}
-                  />
-                  <Label htmlFor="isFreePlayer" className="font-normal cursor-pointer">
-                    Jugador Libre
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-start space-x-2">
                   <Checkbox
                     id="hasPrivateAgreement"
-                    checked={formData.hasPrivateAgreement || false}
-                    onCheckedChange={(checked) => handleChange("hasPrivateAgreement", checked as boolean)}
+                    checked={formData.privateAgreementDetails !== undefined && formData.privateAgreementDetails !== ""}
+                    onCheckedChange={(checked) => {
+                      if (!checked) {
+                        handleChange("privateAgreementDetails", "")
+                      }
+                    }}
                     disabled={readOnly}
                   />
-                  <Label htmlFor="hasPrivateAgreement" className="font-normal cursor-pointer">
-                    Convenio Privado
-                  </Label>
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="hasPrivateAgreement" className="font-normal cursor-pointer">
+                      Convenio Privado
+                    </Label>
+                    {(formData.privateAgreementDetails !== undefined || !readOnly) && (
+                      <Textarea
+                        id="privateAgreementDetails"
+                        placeholder="Detalles del convenio privado..."
+                        value={formData.privateAgreementDetails || ""}
+                        onChange={(e) => handleChange("privateAgreementDetails", e.target.value)}
+                        disabled={readOnly}
+                        rows={3}
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="signedARF"
-                    checked={formData.signedARF || false}
-                    onCheckedChange={(checked) => handleChange("signedARF", checked as boolean)}
-                    disabled={readOnly}
-                  />
-                  <Label htmlFor="signedARF" className="font-normal cursor-pointer">
-                    Firmó A.R.F (Asociación Rosarina de Fútbol)
-                  </Label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-red-700 bg-red-50 p-2 rounded">Registro</h3>
+              <div className="space-y-4">
+                {/* Firmó A.R.F */}
+                <div className="space-y-3 border-l-2 border-red-200 pl-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="signedARF"
+                      checked={formData.signedARF || false}
+                      onCheckedChange={(checked) => {
+                        handleChange("signedARF", checked as boolean)
+                        if (!checked) {
+                          handleChange("signedARFYear", "")
+                        }
+                      }}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="signedARF" className="font-normal cursor-pointer">
+                      Firmó A.R.F (Asociación Rosarina de Fútbol)
+                    </Label>
+                  </div>
+                  {formData.signedARF && (
+                    <div className="ml-6 space-y-2">
+                      <Label htmlFor="signedARFYear">Año</Label>
+                      <Input
+                        id="signedARFYear"
+                        type="number"
+                        placeholder="Ej: 2023"
+                        value={formData.signedARFYear || ""}
+                        onChange={(e) => handleChange("signedARFYear", Number.parseInt(e.target.value) || "")}
+                        disabled={readOnly}
+                        min="1900"
+                        max="2100"
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="signedAFA"
-                    checked={formData.signedAFA || false}
-                    onCheckedChange={(checked) => handleChange("signedAFA", checked as boolean)}
-                    disabled={readOnly}
-                  />
-                  <Label htmlFor="signedAFA" className="font-normal cursor-pointer">
-                    Firmó A.F.A (Asociación del Fútbol Argentino)
-                  </Label>
+
+                {/* Firmó A.F.A */}
+                <div className="space-y-3 border-l-2 border-red-200 pl-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="signedAFA"
+                      checked={formData.signedAFA || false}
+                      onCheckedChange={(checked) => {
+                        handleChange("signedAFA", checked as boolean)
+                        if (!checked) {
+                          handleChange("signedAFAYear", "")
+                        }
+                      }}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="signedAFA" className="font-normal cursor-pointer">
+                      Firmó A.F.A (Asociación del Fútbol Argentino)
+                    </Label>
+                  </div>
+                  {formData.signedAFA && (
+                    <div className="ml-6 space-y-2">
+                      <Label htmlFor="signedAFAYear">Año</Label>
+                      <Input
+                        id="signedAFAYear"
+                        type="number"
+                        placeholder="Ej: 2023"
+                        value={formData.signedAFAYear || ""}
+                        onChange={(e) => handleChange("signedAFAYear", Number.parseInt(e.target.value) || "")}
+                        disabled={readOnly}
+                        min="1900"
+                        max="2100"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Jugador Libre */}
+                <div className="space-y-3 border-l-2 border-red-200 pl-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isFreePlayer"
+                      checked={formData.isFreePlayer || false}
+                      onCheckedChange={(checked) => {
+                        handleChange("isFreePlayer", checked as boolean)
+                        if (!checked) {
+                          handleChange("freePlayerYear", "")
+                        }
+                      }}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="isFreePlayer" className="font-normal cursor-pointer">
+                      Jugador Libre
+                    </Label>
+                  </div>
+                  {formData.isFreePlayer && (
+                    <div className="ml-6 space-y-2">
+                      <Label htmlFor="freePlayerYear">Año</Label>
+                      <Input
+                        id="freePlayerYear"
+                        type="number"
+                        placeholder="Ej: 2023"
+                        value={formData.freePlayerYear || ""}
+                        onChange={(e) => handleChange("freePlayerYear", Number.parseInt(e.target.value) || "")}
+                        disabled={readOnly}
+                        min="1900"
+                        max="2100"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Jugador a Préstamo */}
+                <div className="space-y-3 border-l-2 border-red-200 pl-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isOnLoan"
+                      checked={formData.isOnLoan || false}
+                      onCheckedChange={(checked) => {
+                        handleChange("isOnLoan", checked as boolean)
+                        if (!checked) {
+                          handleChange("loanYear", "")
+                          handleChange("loanClub", "")
+                        }
+                      }}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="isOnLoan" className="font-normal cursor-pointer">
+                      Jugador a Préstamo
+                    </Label>
+                  </div>
+                  {formData.isOnLoan && (
+                    <div className="ml-6 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="loanYear">Año del Préstamo</Label>
+                        <Input
+                          id="loanYear"
+                          type="number"
+                          placeholder="Ej: 2023"
+                          value={formData.loanYear || ""}
+                          onChange={(e) => handleChange("loanYear", Number.parseInt(e.target.value) || "")}
+                          disabled={readOnly}
+                          min="1900"
+                          max="2100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="loanClub">Club</Label>
+                        <Input
+                          id="loanClub"
+                          placeholder="Nombre del club"
+                          value={formData.loanClub || ""}
+                          onChange={(e) => handleChange("loanClub", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

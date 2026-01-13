@@ -22,24 +22,21 @@ import { Input } from "@/components/ui/input"
 import { PlayerIndicesManager } from "@/components/player-indices-manager"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
+import { PlayerObservationsDialog } from "@/components/player-observations-dialog"
+import { PlayerLeagueStatsTabs } from "@/components/player-league-stats-tabs"
 import {
   ArrowLeft,
   UserIcon,
-  Calendar,
-  Ruler,
-  Weight,
-  Target,
   FileText,
-  Clock,
-  Trophy,
   AlertCircle,
   Edit2,
   Save,
   X,
-  Goal,
   Activity,
   Loader2,
   BarChart3,
+  ClipboardList,
+  RefreshCw,
 } from "lucide-react"
 import { hasPermission } from "@/lib/rbac" // Importar función para verificar permisos
 
@@ -61,37 +58,78 @@ export default function PlayerDetailPage() {
   const [editedAttendance, setEditedAttendance] = useState("")
   const [isEditingAttendance, setIsEditingAttendance] = useState(false)
   const [showExtendedData, setShowExtendedData] = useState(false)
+  const [showObservations, setShowObservations] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const loadPlayerData = async (playerId: string) => {
+    console.log("[v0] Loading player data for ID:", playerId)
+
+    const [currentUser, foundPlayer, allReports] = await Promise.all([
+      getCurrentUser(),
+      getPlayerById(playerId),
+      getReportsByPlayerId(playerId),
+    ])
+
+    if (currentUser) {
+      setUser(currentUser)
+    }
+
+    if (foundPlayer) {
+      console.log("[v0] Player loaded:", {
+        name: foundPlayer.name,
+        age: foundPlayer.age,
+        height: foundPlayer.height,
+        weight: foundPlayer.weight,
+        leagueStatsCount: foundPlayer.leagueStats?.length || 0,
+        leagueStats: foundPlayer.leagueStats,
+      })
+
+      setPlayer(foundPlayer)
+      setEditedReport(foundPlayer.technicalReport || "")
+      setEditedAttendance(foundPlayer.attendancePercentage.toString())
+      setEditedAge(foundPlayer.age.toString())
+      setEditedWeight(foundPlayer.weight.toString())
+      setEditedHeight(foundPlayer.height.toString())
+      const sortedReports = allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setRecentReports(sortedReports.slice(0, 5))
+    }
+  }
 
   useEffect(() => {
     const init = async () => {
       setLoading(true)
       const playerId = params.id as string
-
-      const [currentUser, foundPlayer, allReports] = await Promise.all([
-        getCurrentUser(),
-        getPlayerById(playerId),
-        getReportsByPlayerId(playerId),
-      ])
-
-      if (currentUser) {
-        setUser(currentUser)
-      }
-
-      if (foundPlayer) {
-        setPlayer(foundPlayer)
-        setEditedReport(foundPlayer.technicalReport || "")
-        setEditedAttendance(foundPlayer.attendancePercentage.toString())
-        setEditedAge(foundPlayer.age.toString())
-        setEditedWeight(foundPlayer.weight.toString())
-        setEditedHeight(foundPlayer.height.toString())
-        const sortedReports = allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        setRecentReports(sortedReports.slice(0, 5))
-      }
-
+      await loadPlayerData(playerId)
       setLoading(false)
     }
     init()
   }, [params.id])
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && params.id) {
+        console.log("[v0] Page became visible, refreshing player data...")
+        await loadPlayerData(params.id as string)
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [params.id])
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    const playerId = params.id as string
+    await loadPlayerData(playerId)
+    setIsRefreshing(false)
+    toast({
+      title: "Datos actualizados",
+      description: "Las estadísticas del jugador se han actualizado correctamente",
+    })
+  }
 
   const handleCancelEdit = () => {
     setIsEditingReport(false)
@@ -152,6 +190,8 @@ export default function PlayerDetailPage() {
     const weight = Number.parseFloat(editedWeight)
     const height = Number.parseFloat(editedHeight)
 
+    console.log("[v0] Saving physical data:", { age, weight, height })
+
     if (isNaN(age) || age < 1 || age > 100) {
       toast({
         title: "Error",
@@ -184,11 +224,13 @@ export default function PlayerDetailPage() {
     if (success) {
       setPlayer({ ...player, age, weight, height })
       setIsEditingPhysicalData(false)
+      console.log("[v0] Physical data updated successfully")
       toast({
         title: "Datos actualizados",
         description: "Los datos físicos se actualizaron correctamente",
       })
     } else {
+      console.error("[v0] Failed to update physical data")
       toast({
         title: "Error",
         description: "No se pudieron actualizar los datos",
@@ -203,6 +245,12 @@ export default function PlayerDetailPage() {
       setEditedAge(player.age.toString())
       setEditedWeight(player.weight.toString())
       setEditedHeight(player.height.toString())
+    }
+  }
+
+  const handleUpdateObservations = (observations: string) => {
+    if (player) {
+      setPlayer({ ...player, observations })
     }
   }
 
@@ -235,30 +283,41 @@ export default function PlayerDetailPage() {
   const canEdit = user.role === "dirigente" || user.role === "entrenador"
   const canViewIndices = user.role === "dirigente" || user.role === "entrenador"
   const canEditPhysicalData = hasPermission(user.role, "edit_player_physical_data")
-  const canViewExtendedData = user.role === "dirigente"
+  const canViewExtendedData = user.role === "dirigente" || user.role === "administrador"
+  const canViewObservations = user.role === "dirigente" || user.role === "entrenador" || user.role === "administrador"
+  const hasObservations = player.observations && player.observations.trim().length > 0
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background">
         <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
           <div className="container mx-auto px-4 py-4">
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/dashboard")}
-              className="text-white hover:bg-white/20 mb-2"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver al Inicio
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/areas")}
-              className="text-white hover:bg-white/20 mb-2 ml-2"
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              Áreas
-            </Button>
-            <h1 className="text-2xl font-bold">Perfil del Jugador</h1>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/dashboard")}
+                  className="text-white hover:bg-white/20"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Volver al Inicio
+                </Button>
+                <Button variant="ghost" onClick={() => router.push("/areas")} className="text-white hover:bg-white/20">
+                  <Activity className="h-4 w-4 mr-2" />
+                  Áreas
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="text-white hover:bg-white/20"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+                {isRefreshing ? "Actualizando..." : "Actualizar Estadísticas"}
+              </Button>
+            </div>
+            <h1 className="text-2xl font-bold mt-2">Perfil del Jugador</h1>
           </div>
         </header>
 
@@ -286,7 +345,7 @@ export default function PlayerDetailPage() {
                     <Button
                       onClick={() => setShowIndicesModal(true)}
                       variant="outline"
-                      className="mt-4 w-full border-red-700 text-red-700 hover:bg-red-50"
+                      className="mt-4 w-full border-red-700 text-red-700 bg-red-50 hover:bg-red-100"
                     >
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Índices Individuales
@@ -303,6 +362,21 @@ export default function PlayerDetailPage() {
                       Ver Datos Administrativos
                     </Button>
                   )}
+
+                  {canViewObservations && (
+                    <Button
+                      onClick={() => setShowObservations(true)}
+                      variant="outline"
+                      className={`mt-2 w-full ${
+                        hasObservations
+                          ? "border-green-600 text-green-700 bg-green-50 hover:bg-green-100"
+                          : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Detalles
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -311,132 +385,77 @@ export default function PlayerDetailPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Información Básica</CardTitle>
-                    <CardDescription>Datos actuales del jugador</CardDescription>
+                    <CardTitle>Estadísticas del Jugador</CardTitle>
+                    <CardDescription>Información básica y estadísticas por liga</CardDescription>
                   </div>
-                  {canEditPhysicalData && !isEditingPhysicalData && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setIsEditingPhysicalData(true)}
-                      className="gap-2 bg-red-700 hover:bg-red-800"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                      Editar Datos Físicos
-                    </Button>
-                  )}
-                  {canEditPhysicalData && isEditingPhysicalData && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancelPhysicalDataEdit}
-                        className="gap-2 bg-transparent"
-                      >
-                        <X className="h-4 w-4" />
-                        Cancelar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleSavePhysicalData}
-                        className="gap-2 bg-red-700 hover:bg-red-800"
-                      >
-                        <Save className="h-4 w-4" />
-                        Guardar
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Calendar className="h-8 w-8 text-red-700 mb-2" />
-                    {isEditingPhysicalData ? (
-                      <Input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={editedAge}
-                        onChange={(e) => setEditedAge(e.target.value)}
-                        className="w-20 h-10 text-center text-xl font-bold mb-1"
-                      />
-                    ) : (
-                      <p className="text-2xl font-bold">{player.age}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">Años</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Ruler className="h-8 w-8 text-red-700 mb-2" />
-                    {isEditingPhysicalData ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min="50"
-                          max="250"
-                          value={editedHeight}
-                          onChange={(e) => setEditedHeight(e.target.value)}
-                          className="w-20 h-10 text-center text-xl font-bold"
-                        />
+                {(user.role === "dirigente" || user.role === "entrenador") && (
+                  <div className="mb-6 p-4 bg-muted rounded-lg border-2 border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Activity className="h-6 w-6 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Porcentaje de Asistencia</p>
+                          {isEditingAttendance ? (
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={editedAttendance}
+                                onChange={(e) => setEditedAttendance(e.target.value)}
+                                className="w-24 h-9 text-lg font-bold"
+                              />
+                              <span className="text-lg font-bold">%</span>
+                            </div>
+                          ) : (
+                            <p className="text-2xl font-bold text-green-600">{player.attendancePercentage}%</p>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-2xl font-bold">{player.height}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">cm</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Weight className="h-8 w-8 text-red-700 mb-2" />
-                    {isEditingPhysicalData ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min="1"
-                          max="200"
-                          step="0.1"
-                          value={editedWeight}
-                          onChange={(e) => setEditedWeight(e.target.value)}
-                          className="w-20 h-10 text-center text-xl font-bold"
-                        />
+                      <div className="flex gap-2">
+                        {!isEditingAttendance && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsEditingAttendance(true)}
+                            className="gap-2 border-green-600 text-green-700 hover:bg-green-50"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                            Editar
+                          </Button>
+                        )}
+                        {isEditingAttendance && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleCancelAttendanceEdit}
+                              className="gap-2 bg-transparent"
+                            >
+                              <X className="h-4 w-4" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleSaveAttendance}
+                              className="gap-2 bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="h-4 w-4" />
+                              Guardar
+                            </Button>
+                          </>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-2xl font-bold">{player.weight}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">kg</p>
+                    </div>
                   </div>
+                )}
 
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Target className="h-8 w-8 text-red-700 mb-2" />
-                    <p className="text-xl font-bold">{player.position}</p>
-                    <p className="text-sm text-muted-foreground">Posición</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Clock className="h-8 w-8 text-red-700 mb-2" />
-                    <p className="text-2xl font-bold">{player.minutesPlayed}</p>
-                    <p className="text-sm text-muted-foreground">Minutos</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Trophy className="h-8 w-8 text-red-700 mb-2" />
-                    <p className="text-2xl font-bold">{player.matchesPlayed}</p>
-                    <p className="text-sm text-muted-foreground">Partidos</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <Goal className="h-8 w-8 text-red-700 mb-2" />
-                    <p className="text-2xl font-bold">{player.goals}</p>
-                    <p className="text-sm text-muted-foreground">Goles</p>
-                  </div>
-
-                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                    <AlertCircle className={`h-8 w-8 mb-2 ${player.isInjured ? "text-red-700" : "text-green-600"}`} />
-                    <p className="text-xl font-bold">{player.isInjured ? "Lesionado" : "Sano"}</p>
-                    <p className="text-sm text-muted-foreground">Estado</p>
-                  </div>
-                </div>
+                <PlayerLeagueStatsTabs player={player} />
               </CardContent>
             </Card>
           </div>
@@ -535,22 +554,33 @@ export default function PlayerDetailPage() {
           </Card>
         </main>
 
-        {showIndicesModal && user && player && (
+        {showIndicesModal && (
           <PlayerIndicesManager
             playerId={player.id}
             playerName={player.name}
-            userId={user.id}
             onClose={() => setShowIndicesModal(false)}
           />
         )}
 
-        {showExtendedData && player && (
+        {showExtendedData && (
           <ExtendedPlayerDataDialog
+            player={player}
             open={showExtendedData}
             onOpenChange={setShowExtendedData}
-            extendedData={player.extendedData || {}}
-            onSave={() => {}}
+            onUpdate={(updatedPlayer) => {
+              setPlayer(updatedPlayer)
+            }}
             readOnly={true}
+          />
+        )}
+
+        {showObservations && (
+          <PlayerObservationsDialog
+            player={player}
+            open={showObservations}
+            onOpenChange={setShowObservations}
+            onUpdate={handleUpdateObservations}
+            readOnly={false}
           />
         )}
       </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PlayersList } from "@/components/players-list"
-import type { Division } from "@/lib/players"
+import type { Division, LeagueType } from "@/lib/players"
 import {
   LogOut,
   Users,
@@ -30,12 +30,14 @@ import { useToast } from "@/hooks/use-toast"
 import { getDivisionLabel, getPlayers } from "@/lib/players"
 import { hasPermission } from "@/lib/rbac"
 import { IndicesManager } from "@/components/indices-manager"
+import { LeagueTypeFilter } from "@/components/league-type-filter"
 
 export default function DashboardPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [selectedDivision, setSelectedDivision] = useState<Division | "all">("all")
+  const [selectedLeagueType, setSelectedLeagueType] = useState<LeagueType | "all">("all")
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [showTrainingModal, setShowTrainingModal] = useState(false)
   const [trainingDescription, setTrainingDescription] = useState("")
@@ -303,46 +305,57 @@ export default function DashboardPage() {
         {/* Players Section */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Jugadores del Club</CardTitle>
-                <CardDescription>Seleccione una división para filtrar jugadores</CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Jugadores del Club</CardTitle>
+                  <CardDescription>Seleccione una división para filtrar jugadores</CardDescription>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Select value={selectedDivision} onValueChange={(v) => setSelectedDivision(v as Division | "all")}>
-                  <SelectTrigger className="w-full sm:w-[250px]">
-                    <SelectValue placeholder="Seleccione división" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {divisions.map((div) => (
-                      <SelectItem key={div.value} value={div.value}>
-                        {div.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {canViewIndices && selectedDivision !== "all" && (
-                  <Button
-                    onClick={() => setShowIndicesModal(true)}
-                    variant="outline"
-                    className="border-red-700 text-red-700 hover:bg-red-50"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Índices
-                  </Button>
-                )}
-                {canManageContent && selectedDivision !== "all" && (
-                  <>
-                    {hasPermission(user.role, "manage_matches") && (
+
+              <div className="flex flex-col gap-3">
+                {/* Primera fila: Filtros */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Select value={selectedDivision} onValueChange={(v) => setSelectedDivision(v as Division | "all")}>
+                    <SelectTrigger className="w-full sm:w-[250px]">
+                      <SelectValue placeholder="Seleccione división" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {divisions.map((div) => (
+                        <SelectItem key={div.value} value={div.value}>
+                          {div.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <LeagueTypeFilter value={selectedLeagueType} onChange={setSelectedLeagueType} />
+                </div>
+
+                {/* Segunda fila: Botones de acciones (solo cuando hay división seleccionada) */}
+                {selectedDivision !== "all" && (
+                  <div className="flex flex-wrap gap-2">
+                    {canViewIndices && (
+                      <Button
+                        onClick={() => setShowIndicesModal(true)}
+                        variant="outline"
+                        size="sm"
+                        className="border-red-700 text-red-700 hover:bg-red-50"
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Índices
+                      </Button>
+                    )}
+                    {canManageContent && hasPermission(user.role, "manage_matches") && (
                       <Button
                         onClick={() => router.push(`/matches/${selectedDivision}`)}
+                        size="sm"
                         className="bg-red-700 hover:bg-red-800"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
                         Cargar Partido
                       </Button>
                     )}
-                    {hasPermission(user.role, "manage_trainings") && (
+                    {canManageContent && hasPermission(user.role, "manage_trainings") && (
                       <Button
                         onClick={() => setShowTrainingModal(true)}
                         size="sm"
@@ -352,7 +365,7 @@ export default function DashboardPage() {
                         Cargar Entrenamiento
                       </Button>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -510,7 +523,11 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <PlayersList division={selectedDivision === "all" ? undefined : selectedDivision} userRole={user.role} />
+            <PlayersList
+              division={selectedDivision === "all" ? undefined : selectedDivision}
+              userRole={user.role}
+              leagueType={selectedLeagueType === "all" ? undefined : selectedLeagueType}
+            />
           </CardContent>
         </Card>
       </main>

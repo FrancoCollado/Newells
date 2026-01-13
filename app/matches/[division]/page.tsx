@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { getCurrentUser, type User } from "@/lib/auth"
@@ -14,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Upload, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import type { LeagueType } from "@/lib/players"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function AddMatchPage() {
   const router = useRouter()
@@ -34,6 +35,7 @@ export default function AddMatchPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<
     { playerId: string; playerName: string; minutesPlayed: number; wasInjured: boolean; goals: number }[]
   >([])
+  const [leagueType, setLeagueType] = useState<LeagueType>("AFA")
 
   const division = params.division as Division
 
@@ -46,12 +48,14 @@ export default function AddMatchPage() {
       }
 
       const allPlayers = await getPlayers()
-      const divisionPlayers = allPlayers.filter((p) => p.division === division)
+      const divisionPlayers = allPlayers.filter(
+        (p) => p.division === division && (p.leagueTypes?.includes(leagueType) || p.leagueTypes?.length === 0),
+      )
       setPlayers(divisionPlayers)
       setLoading(false)
     }
     init()
-  }, [division])
+  }, [division, leagueType])
 
   const handlePlayerToggle = (player: Player) => {
     const exists = selectedPlayers.find((p) => p.playerId === player.id)
@@ -107,9 +111,9 @@ export default function AddMatchPage() {
         players: selectedPlayers,
         createdBy: user?.name ?? "Usuario",
         videoUrl: videoUrl || undefined,
+        leagueType,
       }
 
-      // Save match AND update stats (handled internally by saveMatch)
       await saveMatch(match)
 
       toast({
@@ -166,6 +170,25 @@ export default function AddMatchPage() {
               <CardDescription>Complete los datos del partido jugado</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                <Label htmlFor="leagueType" className="text-red-900 font-semibold">
+                  Tipo de Liga *
+                </Label>
+                <Select value={leagueType} onValueChange={(v) => setLeagueType(v as LeagueType)}>
+                  <SelectTrigger className="border-red-300">
+                    <SelectValue placeholder="Seleccione tipo de liga" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AFA">AFA</SelectItem>
+                    <SelectItem value="ROSARINA">ROSARINA</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-red-700">
+                  Seleccione la liga en la que se jugó este partido. Las estadísticas se registrarán para esa liga
+                  específica.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Fecha</Label>

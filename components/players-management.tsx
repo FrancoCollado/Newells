@@ -13,6 +13,7 @@ import {
   type Division,
   type Position,
   type PlayerExtendedData,
+  type LeagueType,
 } from "@/lib/players"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Pencil, Trash2, Search, Loader2, FileText } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function PlayersManagement() {
   const { toast } = useToast()
@@ -59,6 +61,8 @@ export function PlayersManagement() {
     position: "Defensor" as Position,
     height: "",
     weight: "",
+    leagueTypes: ["ROSARINA"] as LeagueType[],
+    isOnLoan: false,
   })
 
   // Fetch players on filters change
@@ -97,6 +101,8 @@ export function PlayersManagement() {
       position: "Defensor",
       height: "",
       weight: "",
+      leagueTypes: ["ROSARINA"],
+      isOnLoan: false,
     })
     setExtendedData({})
   }
@@ -106,6 +112,15 @@ export function PlayersManagement() {
       toast({
         title: "Error",
         description: "Todos los campos obligatorios deben completarse",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (formData.leagueTypes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar al menos una liga (AFA o ROSARINA)",
         variant: "destructive",
       })
       return
@@ -121,6 +136,9 @@ export function PlayersManagement() {
       height: Number.parseInt(formData.height),
       weight: Number.parseInt(formData.weight),
       extendedData: extendedData,
+      leagueTypes: formData.leagueTypes,
+      loanStatus: formData.isOnLoan ? "PRESTAMO" : null,
+      leagueStats: [],
     })
 
     if (newPlayer) {
@@ -152,6 +170,15 @@ export function PlayersManagement() {
       return
     }
 
+    if (formData.leagueTypes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar al menos una liga (AFA o ROSARINA)",
+        variant: "destructive",
+      })
+      return
+    }
+
     setActionLoading(true)
 
     const updatedPlayer = await updatePlayer(selectedPlayer.id, {
@@ -162,6 +189,8 @@ export function PlayersManagement() {
       height: Number.parseInt(formData.height),
       weight: Number.parseInt(formData.weight),
       extendedData: extendedData,
+      leagueTypes: formData.leagueTypes,
+      loanStatus: formData.isOnLoan ? "PRESTAMO" : null,
     })
 
     if (updatedPlayer) {
@@ -218,6 +247,8 @@ export function PlayersManagement() {
       position: player.position,
       height: player.height.toString(),
       weight: player.weight.toString(),
+      leagueTypes: player.leagueTypes || ["ROSARINA"],
+      isOnLoan: player.loanStatus === "PRESTAMO",
     })
     setExtendedData(player.extendedData || {})
     setIsEditDialogOpen(true)
@@ -226,6 +257,15 @@ export function PlayersManagement() {
   const openDeleteDialog = (player: Player) => {
     setSelectedPlayer(player)
     setIsDeleteDialogOpen(true)
+  }
+
+  const toggleLeagueType = (leagueType: LeagueType) => {
+    setFormData((prev) => {
+      const newLeagueTypes = prev.leagueTypes.includes(leagueType)
+        ? prev.leagueTypes.filter((lt) => lt !== leagueType)
+        : [...prev.leagueTypes, leagueType]
+      return { ...prev, leagueTypes: newLeagueTypes }
+    })
   }
 
   if (loading) {
@@ -442,6 +482,45 @@ export function PlayersManagement() {
                 />
               </div>
             </div>
+
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <Label className="text-base font-semibold">Ligas *</Label>
+              <p className="text-sm text-muted-foreground">Seleccione en qué liga(s) participa el jugador</p>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="add-league-afa"
+                    checked={formData.leagueTypes.includes("AFA")}
+                    onCheckedChange={() => toggleLeagueType("AFA")}
+                  />
+                  <Label htmlFor="add-league-afa" className="font-normal cursor-pointer">
+                    AFA (Asociación del Fútbol Argentino)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="add-league-rosarina"
+                    checked={formData.leagueTypes.includes("ROSARINA")}
+                    onCheckedChange={() => toggleLeagueType("ROSARINA")}
+                  />
+                  <Label htmlFor="add-league-rosarina" className="font-normal cursor-pointer">
+                    Liga Rosarina de Fútbol
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/50">
+              <Checkbox
+                id="add-loan-status"
+                checked={formData.isOnLoan}
+                onCheckedChange={(checked) => setFormData({ ...formData, isOnLoan: checked === true })}
+              />
+              <Label htmlFor="add-loan-status" className="font-normal cursor-pointer">
+                Jugador en préstamo
+              </Label>
+            </div>
+
             <Button
               type="button"
               variant="outline"
@@ -563,6 +642,45 @@ export function PlayersManagement() {
                 />
               </div>
             </div>
+
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <Label className="text-base font-semibold">Ligas *</Label>
+              <p className="text-sm text-muted-foreground">Seleccione en qué liga(s) participa el jugador</p>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-league-afa"
+                    checked={formData.leagueTypes.includes("AFA")}
+                    onCheckedChange={() => toggleLeagueType("AFA")}
+                  />
+                  <Label htmlFor="edit-league-afa" className="font-normal cursor-pointer">
+                    AFA (Asociación del Fútbol Argentino)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-league-rosarina"
+                    checked={formData.leagueTypes.includes("ROSARINA")}
+                    onCheckedChange={() => toggleLeagueType("ROSARINA")}
+                  />
+                  <Label htmlFor="edit-league-rosarina" className="font-normal cursor-pointer">
+                    Liga Rosarina de Fútbol
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/50">
+              <Checkbox
+                id="edit-loan-status"
+                checked={formData.isOnLoan}
+                onCheckedChange={(checked) => setFormData({ ...formData, isOnLoan: checked === true })}
+              />
+              <Label htmlFor="edit-loan-status" className="font-normal cursor-pointer">
+                Jugador en préstamo
+              </Label>
+            </div>
+
             <Button
               type="button"
               variant="outline"
@@ -579,7 +697,7 @@ export function PlayersManagement() {
             </Button>
             <Button onClick={handleEdit} className="bg-red-700 hover:bg-red-800" disabled={actionLoading}>
               {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Guardar
+              Guardar Cambios
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -606,12 +724,15 @@ export function PlayersManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Extended Data Dialog */}
       <ExtendedPlayerDataDialog
         open={showExtendedDataDialog}
         onOpenChange={setShowExtendedDataDialog}
         extendedData={extendedData}
-        onSave={(data) => setExtendedData(data)}
-        readOnly={false}
+        onSave={(data) => {
+          setExtendedData(data)
+          setShowExtendedDataDialog(false)
+        }}
       />
     </div>
   )

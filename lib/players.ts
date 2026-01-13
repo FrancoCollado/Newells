@@ -14,29 +14,49 @@ export type Division =
   | "12"
   | "13"
   | "arqueros"
+
 export type Position = "Arquero" | "Defensor" | "Mediocampista" | "Delantero"
 
+export type LeagueType = "AFA" | "ROSARINA"
+export type LoanStatus = "PRESTAMO" | null
+
+export interface LeagueStats {
+  leagueType: LeagueType
+  minutesPlayed: number
+  matchesPlayed: number
+  goals: number
+}
+
 export interface PlayerExtendedData {
-  birthDate?: string // Fecha de nacimiento
-  document?: string // Documento
-  province?: string // Provincia
-  admissionDate?: string // Fecha de ingreso
-  phone?: string // Teléfono
-  address?: string // Domicilio
-  originLocality?: string // Localidad origen
-  originAddress?: string // Domicilio origen
-  originProvince?: string // Provincia origen
-  fatherName?: string // Nombre padre
-  motherName?: string // Nombre madre
-  tutorName?: string // Nombre tutor
-  nationality?: string // Nacionalidad
-  healthInsurance?: string // Obra social
-  originLeague?: string // Liga procedencia
-  originClub?: string // Club procedencia
-  isFreePlayer?: boolean // Jugador libre (si/no)
-  hasPrivateAgreement?: boolean // Convenio privado (si/no)
-  signedARF?: boolean // Firmó A.R.F (si/no)
-  signedAFA?: boolean // Firmó A.F.A (si/no)
+  birthDate?: string
+  document?: string
+  province?: string
+  admissionDate?: string
+  phone?: string
+  address?: string
+  originLocality?: string
+  originAddress?: string
+  originProvince?: string
+  fatherName?: string
+  motherName?: string
+  tutorName?: string
+  nationality?: string
+  healthInsurance?: string
+  originLeague?: string
+  originClub?: string
+  citizenship?: string
+  parentsPhone?: string
+  representative?: string
+  privateAgreementDetails?: string
+  signedARF?: boolean
+  signedARFYear?: number
+  signedAFA?: boolean
+  signedAFAYear?: number
+  isFreePlayer?: boolean
+  freePlayerYear?: number
+  isOnLoan?: boolean
+  loanYear?: number
+  loanClub?: string
 }
 
 export interface Player {
@@ -45,16 +65,20 @@ export interface Player {
   division: Division
   age: number
   position: Position
-  height: number // en cm
-  weight: number // en kg
+  height: number
+  weight: number
   photo?: string
-  minutesPlayed: number // Total de minutos jugados
-  matchesPlayed: number // Total de partidos jugados
-  isInjured: boolean // Estado de lesión
-  technicalReport?: string // Informe técnico del jugador (editable por dirigente/técnicos)
-  goals: number // Total de goles marcados
-  attendancePercentage: number // Porcentaje de asistencia (0-100)
-  extendedData?: PlayerExtendedData // Datos extendidos opcionales
+  minutesPlayed: number
+  matchesPlayed: number
+  isInjured: boolean
+  technicalReport?: string
+  goals: number
+  attendancePercentage: number
+  extendedData?: PlayerExtendedData
+  observations?: string
+  leagueTypes: LeagueType[] // Jugador puede estar en AFA, ROSARINA, o ambos
+  loanStatus: LoanStatus // PRESTAMO o null
+  leagueStats: LeagueStats[] // Estadísticas separadas por liga
 }
 
 export const MOCK_PLAYERS: Player[] = [
@@ -72,6 +96,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "2",
@@ -86,6 +113,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 
   // Reserva
@@ -102,6 +132,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "6",
@@ -116,6 +149,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 
   // 5ta División
@@ -132,6 +168,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "8",
@@ -146,6 +185,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 
   // 7ma División
@@ -162,6 +204,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "10",
@@ -176,6 +221,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 
   // 9na División
@@ -192,6 +240,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "12",
@@ -206,6 +257,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 
   // Arqueros
@@ -222,6 +276,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
   {
     id: "14",
@@ -236,6 +293,9 @@ export const MOCK_PLAYERS: Player[] = [
     isInjured: false,
     goals: 0,
     attendancePercentage: 100,
+    leagueTypes: ["ROSARINA"],
+    loanStatus: null,
+    leagueStats: [],
   },
 ]
 
@@ -260,6 +320,15 @@ export function getDivisionLabel(division: Division): string {
 
 // Helper para mapear DB -> App
 function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
+  const leagueStats: LeagueStats[] = Array.isArray(dbPlayer.player_league_stats)
+    ? dbPlayer.player_league_stats.map((stat: any) => ({
+        leagueType: stat.league_type,
+        minutesPlayed: stat.minutes_played || 0,
+        matchesPlayed: stat.matches_played || 0,
+        goals: stat.goals || 0,
+      }))
+    : []
+
   return {
     id: dbPlayer.id,
     name: dbPlayer.name,
@@ -275,6 +344,10 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
     goals: dbPlayer.goals,
     photo: dbPlayer.photo,
     attendancePercentage: dbPlayer.attendance_percentage ?? 100,
+    observations: dbPlayer.observations,
+    leagueTypes: dbPlayer.league_types || ["ROSARINA"],
+    loanStatus: dbPlayer.loan_status,
+    leagueStats,
     extendedData: {
       birthDate: dbPlayer.birth_date,
       document: dbPlayer.document,
@@ -292,10 +365,19 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
       healthInsurance: dbPlayer.health_insurance,
       originLeague: dbPlayer.origin_league,
       originClub: dbPlayer.origin_club,
-      isFreePlayer: dbPlayer.is_free_player,
-      hasPrivateAgreement: dbPlayer.has_private_agreement,
+      citizenship: dbPlayer.citizenship,
+      parentsPhone: dbPlayer.parents_phone,
+      representative: dbPlayer.representative,
+      privateAgreementDetails: dbPlayer.private_agreement_details,
       signedARF: dbPlayer.signed_arf,
+      signedARFYear: dbPlayer.signed_arf_year,
       signedAFA: dbPlayer.signed_afa,
+      signedAFAYear: dbPlayer.signed_afa_year,
+      isFreePlayer: dbPlayer.is_free_player,
+      freePlayerYear: dbPlayer.free_player_year,
+      isOnLoan: dbPlayer.is_on_loan,
+      loanYear: dbPlayer.loan_year,
+      loanClub: dbPlayer.loan_club,
     },
   }
 }
@@ -320,6 +402,8 @@ async function checkAndSeedPlayers() {
         technical_report: p.technicalReport,
         goals: p.goals,
         attendance_percentage: p.attendancePercentage,
+        league_types: p.leagueTypes,
+        loan_status: p.loanStatus,
       })),
     )
     if (insertError) console.error("Error seeding players:", insertError)
@@ -346,11 +430,20 @@ export async function getPlayersByDivision(
   page = 0,
   limit = 20,
   searchTerm?: string,
+  leagueTypeFilter?: LeagueType | "PRESTAMO" | "todas",
 ): Promise<Player[]> {
+  console.log("[v0] Filtering players:", { division, page, limit, searchTerm, leagueTypeFilter })
+
   const from = page * limit
   const to = from + limit - 1
 
-  let query = supabase.from("players").select("*").range(from, to)
+  let query = supabase
+    .from("players")
+    .select(`
+      *,
+      player_league_stats (*)
+    `)
+    .range(from, to)
 
   if (division && division !== "todas") {
     query = query.eq("division", division)
@@ -360,7 +453,18 @@ export async function getPlayersByDivision(
     query = query.ilike("name", `%${searchTerm}%`)
   }
 
+  if (leagueTypeFilter && leagueTypeFilter !== "todas") {
+    if (leagueTypeFilter === "PRESTAMO") {
+      query = query.eq("loan_status", "PRESTAMO")
+    } else {
+      // Usar el operador @> (contains) de PostgreSQL para arrays JSONB
+      query = query.overlaps("league_types", [leagueTypeFilter])
+    }
+  }
+
   const { data, error } = await query
+
+  console.log("[v0] Query result:", { dataLength: data?.length, error })
 
   if (error) {
     console.error("Error fetching players:", error)
@@ -379,7 +483,14 @@ export async function getPlayersByDivision(
 }
 
 export async function getPlayerById(id: string): Promise<Player | undefined> {
-  const { data, error } = await supabase.from("players").select("*").eq("id", id).single()
+  const { data, error } = await supabase
+    .from("players")
+    .select(`
+      *,
+      player_league_stats (*)
+    `)
+    .eq("id", id)
+    .single()
 
   if (error || !data) return undefined
   return mapDatabasePlayerToAppPlayer(data)
@@ -437,6 +548,8 @@ export async function createPlayer(
     weight: player.weight,
     photo: player.photo,
     attendance_percentage: 100,
+    league_types: player.leagueTypes || ["ROSARINA"],
+    loan_status: player.loanStatus || null,
   }
 
   if (player.extendedData) {
@@ -457,10 +570,23 @@ export async function createPlayer(
     if (ext.healthInsurance) insertData.health_insurance = ext.healthInsurance
     if (ext.originLeague) insertData.origin_league = ext.originLeague
     if (ext.originClub) insertData.origin_club = ext.originClub
-    if (ext.isFreePlayer !== undefined) insertData.is_free_player = ext.isFreePlayer
-    if (ext.hasPrivateAgreement !== undefined) insertData.has_private_agreement = ext.hasPrivateAgreement
+    if (ext.citizenship) insertData.citizenship = ext.citizenship
+    if (ext.parentsPhone) insertData.parents_phone = ext.parentsPhone
+    if (ext.representative) insertData.representative = ext.representative
+    if (ext.privateAgreementDetails) insertData.private_agreement_details = ext.privateAgreementDetails
     if (ext.signedARF !== undefined) insertData.signed_arf = ext.signedARF
+    if (ext.signedARFYear) insertData.signed_arf_year = ext.signedARFYear
     if (ext.signedAFA !== undefined) insertData.signed_afa = ext.signedAFA
+    if (ext.signedAFAYear) insertData.signed_afa_year = ext.signedAFAYear
+    if (ext.isFreePlayer !== undefined) insertData.is_free_player = ext.isFreePlayer
+    if (ext.freePlayerYear) insertData.free_player_year = ext.freePlayerYear
+    if (ext.isOnLoan !== undefined) insertData.is_on_loan = ext.isOnLoan
+    if (ext.loanYear) insertData.loan_year = ext.loanYear
+    if (ext.loanClub) insertData.loan_club = ext.loanClub
+  }
+
+  if (player.observations) {
+    insertData.observations = player.observations
   }
 
   const { data, error } = await supabase.from("players").insert(insertData).select().single()
@@ -483,6 +609,8 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
   if (player.weight) updateData.weight = player.weight
   if (player.photo) updateData.photo = player.photo
   if (player.attendancePercentage !== undefined) updateData.attendance_percentage = player.attendancePercentage
+  if (player.leagueTypes !== undefined) updateData.league_types = player.leagueTypes
+  if (player.loanStatus !== undefined) updateData.loan_status = player.loanStatus
 
   if (player.extendedData) {
     const ext = player.extendedData
@@ -502,10 +630,24 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
     if (ext.healthInsurance !== undefined) updateData.health_insurance = ext.healthInsurance || null
     if (ext.originLeague !== undefined) updateData.origin_league = ext.originLeague || null
     if (ext.originClub !== undefined) updateData.origin_club = ext.originClub || null
-    if (ext.isFreePlayer !== undefined) updateData.is_free_player = ext.isFreePlayer
-    if (ext.hasPrivateAgreement !== undefined) updateData.has_private_agreement = ext.hasPrivateAgreement
+    if (ext.citizenship !== undefined) updateData.citizenship = ext.citizenship || null
+    if (ext.parentsPhone !== undefined) updateData.parents_phone = ext.parentsPhone || null
+    if (ext.representative !== undefined) updateData.representative = ext.representative || null
+    if (ext.privateAgreementDetails !== undefined)
+      updateData.private_agreement_details = ext.privateAgreementDetails || null
     if (ext.signedARF !== undefined) updateData.signed_arf = ext.signedARF
+    if (ext.signedARFYear !== undefined) updateData.signed_arf_year = ext.signedARFYear || null
     if (ext.signedAFA !== undefined) updateData.signed_afa = ext.signedAFA
+    if (ext.signedAFAYear !== undefined) updateData.signed_afa_year = ext.signedAFAYear || null
+    if (ext.isFreePlayer !== undefined) updateData.is_free_player = ext.isFreePlayer
+    if (ext.freePlayerYear !== undefined) updateData.free_player_year = ext.freePlayerYear || null
+    if (ext.isOnLoan !== undefined) updateData.is_on_loan = ext.isOnLoan
+    if (ext.loanYear !== undefined) updateData.loan_year = ext.loanYear || null
+    if (ext.loanClub !== undefined) updateData.loan_club = ext.loanClub || null
+  }
+
+  if (player.observations !== undefined) {
+    updateData.observations = player.observations || null
   }
 
   const { data, error } = await supabase.from("players").update(updateData).eq("id", id).select().single()
@@ -545,6 +687,85 @@ export async function updatePlayerPhysicalData(
 
   if (error) {
     console.error("Error updating player physical data:", error)
+    return false
+  }
+
+  return true
+}
+
+export async function updatePlayerObservations(playerId: string, observations: string): Promise<boolean> {
+  const { error } = await supabase.from("players").update({ observations }).eq("id", playerId)
+
+  if (error) {
+    console.error("Error updating player observations:", error)
+    return false
+  }
+
+  return true
+}
+
+export async function updatePlayerStatsByLeague(
+  playerId: string,
+  leagueType: LeagueType,
+  minutesPlayed: number,
+  goals: number,
+  isInjured: boolean,
+): Promise<void> {
+  // Actualizar estadísticas específicas de la liga
+  const { error: leagueError } = await supabase.rpc("increment_player_league_stats", {
+    p_id: playerId,
+    p_league_type: leagueType,
+    p_minutes: minutesPlayed,
+    p_goals: goals,
+  })
+
+  if (leagueError) {
+    console.error("Error updating player league stats:", leagueError)
+  }
+
+  // Actualizar estado de lesión si es necesario
+  if (isInjured) {
+    const { error: injuryError } = await supabase.from("players").update({ is_injured: true }).eq("id", playerId)
+
+    if (injuryError) {
+      console.error("Error updating injury status:", injuryError)
+    }
+  }
+}
+
+export async function getPlayerLeagueStats(playerId: string, leagueType: LeagueType): Promise<LeagueStats | null> {
+  const { data, error } = await supabase
+    .from("player_league_stats")
+    .select("*")
+    .eq("player_id", playerId)
+    .eq("league_type", leagueType)
+    .single()
+
+  if (error || !data) return null
+
+  return {
+    leagueType: data.league_type,
+    minutesPlayed: data.minutes_played,
+    matchesPlayed: data.matches_played,
+    goals: data.goals,
+  }
+}
+
+export async function updatePlayerLeagueTypes(
+  playerId: string,
+  leagueTypes: LeagueType[],
+  loanStatus: LoanStatus,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("players")
+    .update({
+      league_types: leagueTypes,
+      loan_status: loanStatus,
+    })
+    .eq("id", playerId)
+
+  if (error) {
+    console.error("Error updating player league types:", error)
     return false
   }
 
