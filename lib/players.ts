@@ -16,6 +16,29 @@ export type Division =
   | "arqueros"
 export type Position = "Arquero" | "Defensor" | "Mediocampista" | "Delantero"
 
+export interface PlayerExtendedData {
+  birthDate?: string // Fecha de nacimiento
+  document?: string // Documento
+  province?: string // Provincia
+  admissionDate?: string // Fecha de ingreso
+  phone?: string // Teléfono
+  address?: string // Domicilio
+  originLocality?: string // Localidad origen
+  originAddress?: string // Domicilio origen
+  originProvince?: string // Provincia origen
+  fatherName?: string // Nombre padre
+  motherName?: string // Nombre madre
+  tutorName?: string // Nombre tutor
+  nationality?: string // Nacionalidad
+  healthInsurance?: string // Obra social
+  originLeague?: string // Liga procedencia
+  originClub?: string // Club procedencia
+  isFreePlayer?: boolean // Jugador libre (si/no)
+  hasPrivateAgreement?: boolean // Convenio privado (si/no)
+  signedARF?: boolean // Firmó A.R.F (si/no)
+  signedAFA?: boolean // Firmó A.F.A (si/no)
+}
+
 export interface Player {
   id: string
   name: string
@@ -31,6 +54,7 @@ export interface Player {
   technicalReport?: string // Informe técnico del jugador (editable por dirigente/técnicos)
   goals: number // Total de goles marcados
   attendancePercentage: number // Porcentaje de asistencia (0-100)
+  extendedData?: PlayerExtendedData // Datos extendidos opcionales
 }
 
 export const MOCK_PLAYERS: Player[] = [
@@ -251,6 +275,28 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
     goals: dbPlayer.goals,
     photo: dbPlayer.photo,
     attendancePercentage: dbPlayer.attendance_percentage ?? 100,
+    extendedData: {
+      birthDate: dbPlayer.birth_date,
+      document: dbPlayer.document,
+      province: dbPlayer.province,
+      admissionDate: dbPlayer.admission_date,
+      phone: dbPlayer.phone,
+      address: dbPlayer.address,
+      originLocality: dbPlayer.origin_locality,
+      originAddress: dbPlayer.origin_address,
+      originProvince: dbPlayer.origin_province,
+      fatherName: dbPlayer.father_name,
+      motherName: dbPlayer.mother_name,
+      tutorName: dbPlayer.tutor_name,
+      nationality: dbPlayer.nationality,
+      healthInsurance: dbPlayer.health_insurance,
+      originLeague: dbPlayer.origin_league,
+      originClub: dbPlayer.origin_club,
+      isFreePlayer: dbPlayer.is_free_player,
+      hasPrivateAgreement: dbPlayer.has_private_agreement,
+      signedARF: dbPlayer.signed_arf,
+      signedAFA: dbPlayer.signed_afa,
+    },
   }
 }
 
@@ -382,20 +428,42 @@ export async function updatePlayerAttendance(playerId: string, attendancePercent
 export async function createPlayer(
   player: Omit<Player, "id" | "minutesPlayed" | "matchesPlayed" | "isInjured" | "goals" | "attendancePercentage">,
 ): Promise<Player | null> {
-  const { data, error } = await supabase
-    .from("players")
-    .insert({
-      name: player.name,
-      division: player.division,
-      age: player.age,
-      position: player.position,
-      height: player.height,
-      weight: player.weight,
-      photo: player.photo,
-      attendance_percentage: 100,
-    })
-    .select()
-    .single()
+  const insertData: any = {
+    name: player.name,
+    division: player.division,
+    age: player.age,
+    position: player.position,
+    height: player.height,
+    weight: player.weight,
+    photo: player.photo,
+    attendance_percentage: 100,
+  }
+
+  if (player.extendedData) {
+    const ext = player.extendedData
+    if (ext.birthDate) insertData.birth_date = ext.birthDate
+    if (ext.document) insertData.document = ext.document
+    if (ext.province) insertData.province = ext.province
+    if (ext.admissionDate) insertData.admission_date = ext.admissionDate
+    if (ext.phone) insertData.phone = ext.phone
+    if (ext.address) insertData.address = ext.address
+    if (ext.originLocality) insertData.origin_locality = ext.originLocality
+    if (ext.originAddress) insertData.origin_address = ext.originAddress
+    if (ext.originProvince) insertData.origin_province = ext.originProvince
+    if (ext.fatherName) insertData.father_name = ext.fatherName
+    if (ext.motherName) insertData.mother_name = ext.motherName
+    if (ext.tutorName) insertData.tutor_name = ext.tutorName
+    if (ext.nationality) insertData.nationality = ext.nationality
+    if (ext.healthInsurance) insertData.health_insurance = ext.healthInsurance
+    if (ext.originLeague) insertData.origin_league = ext.originLeague
+    if (ext.originClub) insertData.origin_club = ext.originClub
+    if (ext.isFreePlayer !== undefined) insertData.is_free_player = ext.isFreePlayer
+    if (ext.hasPrivateAgreement !== undefined) insertData.has_private_agreement = ext.hasPrivateAgreement
+    if (ext.signedARF !== undefined) insertData.signed_arf = ext.signedARF
+    if (ext.signedAFA !== undefined) insertData.signed_afa = ext.signedAFA
+  }
+
+  const { data, error } = await supabase.from("players").insert(insertData).select().single()
 
   if (error) {
     console.error("Error creating player:", error)
@@ -416,6 +484,30 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
   if (player.photo) updateData.photo = player.photo
   if (player.attendancePercentage !== undefined) updateData.attendance_percentage = player.attendancePercentage
 
+  if (player.extendedData) {
+    const ext = player.extendedData
+    if (ext.birthDate !== undefined) updateData.birth_date = ext.birthDate || null
+    if (ext.document !== undefined) updateData.document = ext.document || null
+    if (ext.province !== undefined) updateData.province = ext.province || null
+    if (ext.admissionDate !== undefined) updateData.admission_date = ext.admissionDate || null
+    if (ext.phone !== undefined) updateData.phone = ext.phone || null
+    if (ext.address !== undefined) updateData.address = ext.address || null
+    if (ext.originLocality !== undefined) updateData.origin_locality = ext.originLocality || null
+    if (ext.originAddress !== undefined) updateData.origin_address = ext.originAddress || null
+    if (ext.originProvince !== undefined) updateData.origin_province = ext.originProvince || null
+    if (ext.fatherName !== undefined) updateData.father_name = ext.fatherName || null
+    if (ext.motherName !== undefined) updateData.mother_name = ext.motherName || null
+    if (ext.tutorName !== undefined) updateData.tutor_name = ext.tutorName || null
+    if (ext.nationality !== undefined) updateData.nationality = ext.nationality || null
+    if (ext.healthInsurance !== undefined) updateData.health_insurance = ext.healthInsurance || null
+    if (ext.originLeague !== undefined) updateData.origin_league = ext.originLeague || null
+    if (ext.originClub !== undefined) updateData.origin_club = ext.originClub || null
+    if (ext.isFreePlayer !== undefined) updateData.is_free_player = ext.isFreePlayer
+    if (ext.hasPrivateAgreement !== undefined) updateData.has_private_agreement = ext.hasPrivateAgreement
+    if (ext.signedARF !== undefined) updateData.signed_arf = ext.signedARF
+    if (ext.signedAFA !== undefined) updateData.signed_afa = ext.signedAFA
+  }
+
   const { data, error } = await supabase.from("players").update(updateData).eq("id", id).select().single()
 
   if (error) {
@@ -433,5 +525,28 @@ export async function deletePlayer(id: string): Promise<boolean> {
     console.error("Error deleting player:", error)
     return false
   }
+  return true
+}
+
+export async function updatePlayerPhysicalData(
+  playerId: string,
+  age: number,
+  weight: number,
+  height: number,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("players")
+    .update({
+      age: age,
+      weight: weight,
+      height: height,
+    })
+    .eq("id", playerId)
+
+  if (error) {
+    console.error("Error updating player physical data:", error)
+    return false
+  }
+
   return true
 }

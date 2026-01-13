@@ -18,6 +18,7 @@ export type Permission =
   | "edit_physio_area" // Editar área de fisioterapia
   | "edit_training_area" // Editar área de entrenamiento
   | "access_manager_panel" // Entrar a /manager
+  | "edit_player_physical_data" // Nuevo permiso para editar datos físicos del jugador
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // DIRIGENTE - Puede hacer todo
@@ -39,6 +40,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "edit_physio_area",
     "edit_training_area",
     "access_manager_panel",
+    "edit_player_physical_data", // Dirigente puede editar datos físicos
   ],
 
   // ENTRENADOR - Puede ver informes, cargar partidos y cargar entrenamientos
@@ -66,7 +68,12 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 
   // NUTRICIONISTA - Para mantener compatibilidad con el sistema existente
-  nutricionista: ["create_nutrition_report", "edit_nutrition_area", "view_reports"],
+  nutricionista: [
+    "create_nutrition_report",
+    "edit_nutrition_area",
+    "view_reports",
+    "edit_player_physical_data", // Nuevo permiso para nutricionista
+  ],
 
   // FISIOTERAPEUTA - Para mantener compatibilidad con el sistema existente
   fisioterapeuta: ["create_physio_report", "edit_physio_area", "view_reports"],

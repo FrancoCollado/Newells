@@ -1,7 +1,19 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
-import { getPlayers, createPlayer, updatePlayer, deletePlayer, getDivisionLabel, getPlayersByDivision, type Player, type Division, type Position } from "@/lib/players"
+import {
+  createPlayer,
+  updatePlayer,
+  deletePlayer,
+  getDivisionLabel,
+  getPlayersByDivision,
+  type Player,
+  type Division,
+  type Position,
+  type PlayerExtendedData,
+} from "@/lib/players"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,8 +28,9 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Loader2, FileText } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
 
 export function PlayersManagement() {
   const { toast } = useToast()
@@ -30,7 +43,9 @@ export function PlayersManagement() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
-  
+  const [showExtendedDataDialog, setShowExtendedDataDialog] = useState(false)
+  const [extendedData, setExtendedData] = useState<PlayerExtendedData>({})
+
   // Pagination
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -50,7 +65,7 @@ export function PlayersManagement() {
   useEffect(() => {
     // Debounce search slightly to avoid too many requests
     const timer = setTimeout(() => {
-        loadPlayers()
+      loadPlayers()
     }, 300)
     return () => clearTimeout(timer)
   }, [divisionFilter, page, searchTerm])
@@ -65,13 +80,13 @@ export function PlayersManagement() {
 
   // Reset page when filters change
   const handleFilterChange = (val: Division | "todas") => {
-      setDivisionFilter(val)
-      setPage(0)
+    setDivisionFilter(val)
+    setPage(0)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchTerm(e.target.value)
-      setPage(0)
+    setSearchTerm(e.target.value)
+    setPage(0)
   }
 
   const resetForm = () => {
@@ -83,13 +98,14 @@ export function PlayersManagement() {
       height: "",
       weight: "",
     })
+    setExtendedData({})
   }
 
   const handleAdd = async () => {
     if (!formData.name || !formData.age || !formData.height || !formData.weight) {
       toast({
         title: "Error",
-        description: "Todos los campos son obligatorios",
+        description: "Todos los campos obligatorios deben completarse",
         variant: "destructive",
       })
       return
@@ -104,23 +120,24 @@ export function PlayersManagement() {
       position: formData.position,
       height: Number.parseInt(formData.height),
       weight: Number.parseInt(formData.weight),
+      extendedData: extendedData,
     })
 
     if (newPlayer) {
-        setIsAddDialogOpen(false)
-        resetForm()
-        loadPlayers() // Refresh list
+      setIsAddDialogOpen(false)
+      resetForm()
+      loadPlayers()
 
-        toast({
+      toast({
         title: "Jugador agregado",
         description: `${newPlayer.name} ha sido agregado al plantel`,
-        })
+      })
     } else {
-        toast({
-            title: "Error",
-            description: "No se pudo crear el jugador",
-            variant: "destructive"
-        })
+      toast({
+        title: "Error",
+        description: "No se pudo crear el jugador",
+        variant: "destructive",
+      })
     }
     setActionLoading(false)
   }
@@ -129,39 +146,40 @@ export function PlayersManagement() {
     if (!selectedPlayer || !formData.name || !formData.age || !formData.height || !formData.weight) {
       toast({
         title: "Error",
-        description: "Todos los campos son obligatorios",
+        description: "Todos los campos obligatorios deben completarse",
         variant: "destructive",
       })
       return
     }
 
     setActionLoading(true)
-    
+
     const updatedPlayer = await updatePlayer(selectedPlayer.id, {
-        name: formData.name,
-        division: formData.division,
-        age: Number.parseInt(formData.age),
-        position: formData.position,
-        height: Number.parseInt(formData.height),
-        weight: Number.parseInt(formData.weight),
+      name: formData.name,
+      division: formData.division,
+      age: Number.parseInt(formData.age),
+      position: formData.position,
+      height: Number.parseInt(formData.height),
+      weight: Number.parseInt(formData.weight),
+      extendedData: extendedData,
     })
 
     if (updatedPlayer) {
-        setIsEditDialogOpen(false)
-        setSelectedPlayer(null)
-        resetForm()
-        loadPlayers() // Refresh list
+      setIsEditDialogOpen(false)
+      setSelectedPlayer(null)
+      resetForm()
+      loadPlayers()
 
-        toast({
+      toast({
         title: "Jugador actualizado",
         description: `Los datos de ${formData.name} han sido actualizados`,
-        })
+      })
     } else {
-        toast({
-            title: "Error",
-            description: "No se pudo actualizar el jugador",
-            variant: "destructive"
-        })
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el jugador",
+        variant: "destructive",
+      })
     }
     setActionLoading(false)
   }
@@ -173,20 +191,20 @@ export function PlayersManagement() {
     const success = await deletePlayer(selectedPlayer.id)
 
     if (success) {
-        setIsDeleteDialogOpen(false)
-        setSelectedPlayer(null)
-        loadPlayers() // Refresh list
+      setIsDeleteDialogOpen(false)
+      setSelectedPlayer(null)
+      loadPlayers()
 
-        toast({
+      toast({
         title: "Jugador eliminado",
         description: `${selectedPlayer.name} ha sido eliminado del plantel`,
-        })
+      })
     } else {
-        toast({
-            title: "Error",
-            description: "No se pudo eliminar el jugador",
-            variant: "destructive"
-        })
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el jugador",
+        variant: "destructive",
+      })
     }
     setActionLoading(false)
   }
@@ -201,6 +219,7 @@ export function PlayersManagement() {
       height: player.height.toString(),
       weight: player.weight.toString(),
     })
+    setExtendedData(player.extendedData || {})
     setIsEditDialogOpen(true)
   }
 
@@ -210,7 +229,11 @@ export function PlayersManagement() {
   }
 
   if (loading) {
-     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-red-700" /></div>
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-red-700" />
+      </div>
+    )
   }
 
   return (
@@ -220,12 +243,7 @@ export function PlayersManagement() {
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar jugador..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar jugador..." value={searchTerm} onChange={handleSearchChange} className="pl-10" />
           </div>
           <Select value={divisionFilter} onValueChange={(value) => handleFilterChange(value as Division | "todas")}>
             <SelectTrigger className="w-[200px]">
@@ -256,55 +274,57 @@ export function PlayersManagement() {
       </div>
 
       {loading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-red-700" /></div>
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-red-700" />
+        </div>
       ) : (
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>División</TableHead>
-              <TableHead>Posición</TableHead>
-              <TableHead>Edad</TableHead>
-              <TableHead>Altura</TableHead>
-              <TableHead>Peso</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {players.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No se encontraron jugadores
-                    </TableCell>
-                </TableRow>
-            ) : (
-            players.map((player) => (
-              <TableRow key={player.id}>
-                <TableCell className="font-medium">{player.name}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{getDivisionLabel(player.division)}</Badge>
-                </TableCell>
-                <TableCell>{player.position}</TableCell>
-                <TableCell>{player.age} años</TableCell>
-                <TableCell>{player.height} cm</TableCell>
-                <TableCell>{player.weight} kg</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(player)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(player)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </TableCell>
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>División</TableHead>
+                <TableHead>Posición</TableHead>
+                <TableHead>Edad</TableHead>
+                <TableHead>Altura</TableHead>
+                <TableHead>Peso</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
-            ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {players.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No se encontraron jugadores
+                  </TableCell>
+                </TableRow>
+              ) : (
+                players.map((player) => (
+                  <TableRow key={player.id}>
+                    <TableCell className="font-medium">{player.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{getDivisionLabel(player.division)}</Badge>
+                    </TableCell>
+                    <TableCell>{player.position}</TableCell>
+                    <TableCell>{player.age} años</TableCell>
+                    <TableCell>{player.height} cm</TableCell>
+                    <TableCell>{player.weight} kg</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(player)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(player)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {/* Pagination Controls */}
@@ -312,20 +332,13 @@ export function PlayersManagement() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setPage(p => Math.max(0, p - 1))}
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0 || loading}
         >
           Anterior
         </Button>
-        <div className="text-sm font-medium">
-            Página {page + 1}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage(p => p + 1)}
-          disabled={!hasMore || loading}
-        >
+        <div className="text-sm font-medium">Página {page + 1}</div>
+        <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasMore || loading}>
           Siguiente
         </Button>
       </div>
@@ -429,6 +442,15 @@ export function PlayersManagement() {
                 />
               </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-transparent"
+              onClick={() => setShowExtendedDataDialog(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Datos Administrativos (Opcional)
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -541,6 +563,15 @@ export function PlayersManagement() {
                 />
               </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-transparent"
+              onClick={() => setShowExtendedDataDialog(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Datos Administrativos (Opcional)
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
@@ -548,7 +579,7 @@ export function PlayersManagement() {
             </Button>
             <Button onClick={handleEdit} className="bg-red-700 hover:bg-red-800" disabled={actionLoading}>
               {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Guardar Cambios
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -574,6 +605,14 @@ export function PlayersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExtendedPlayerDataDialog
+        open={showExtendedDataDialog}
+        onOpenChange={setShowExtendedDataDialog}
+        extendedData={extendedData}
+        onSave={(data) => setExtendedData(data)}
+        readOnly={false}
+      />
     </div>
   )
 }
