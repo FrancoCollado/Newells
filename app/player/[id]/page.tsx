@@ -37,6 +37,8 @@ import {
   BarChart3,
   ClipboardList,
   RefreshCw,
+  FileTerminal as FileMedical,
+  Stethoscope,
 } from "lucide-react"
 import { hasPermission } from "@/lib/rbac" // Importar función para verificar permisos
 
@@ -281,11 +283,19 @@ export default function PlayerDetailPage() {
   }
 
   const canEdit = user.role === "dirigente" || user.role === "entrenador"
-  const canViewIndices = user.role === "dirigente" || user.role === "entrenador"
+  const canViewIndices =
+    user.role === "dirigente" ||
+    user.role === "entrenador" ||
+    user.role === "medico" ||
+    user.role === "nutricionista" ||
+    user.role === "kinesiologo" ||
+    user.role === "fisioterapeuta" ||
+    user.role === "psicologo"
   const canEditPhysicalData = hasPermission(user.role, "edit_player_physical_data")
   const canViewExtendedData = user.role === "dirigente" || user.role === "administrador"
   const canViewObservations = user.role === "dirigente" || user.role === "entrenador" || user.role === "administrador"
   const hasObservations = player.observations && player.observations.trim().length > 0
+  const canViewMedicalRecord = hasPermission(user.role, "view_medical_records")
 
   return (
     <AuthGuard>
@@ -349,6 +359,28 @@ export default function PlayerDetailPage() {
                     >
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Índices Individuales
+                    </Button>
+                  )}
+
+                  {canViewMedicalRecord && (
+                    <Button
+                      onClick={() => router.push(`/player/${player.id}/medical-record`)}
+                      variant="outline"
+                      className="mt-2 w-full border-blue-700 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    >
+                      <FileMedical className="h-4 w-4 mr-2" />
+                      Historia Clínica
+                    </Button>
+                  )}
+
+                  {canViewMedicalRecord && (
+                    <Button
+                      onClick={() => router.push(`/player/${player.id}/injuries`)}
+                      variant="outline"
+                      className="mt-2 w-full border-orange-700 text-orange-700 bg-orange-50 hover:bg-orange-100"
+                    >
+                      <Stethoscope className="h-4 w-4 mr-2" />
+                      Lesiones
                     </Button>
                   )}
 

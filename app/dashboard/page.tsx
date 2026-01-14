@@ -20,6 +20,7 @@ import {
   Video,
   Loader2,
   BarChart3,
+  Stethoscope,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -214,7 +215,7 @@ export default function DashboardPage() {
 
   const canManageContent = hasPermission(user.role, "manage_matches") || hasPermission(user.role, "manage_trainings")
   const canViewTrainings = hasPermission(user.role, "manage_trainings") || hasPermission(user.role, "manage_matches")
-  const canViewIndices = user.role === "dirigente" || user.role === "entrenador"
+  const canViewIndices = hasPermission(user.role, "view_indices")
 
   return (
     <div className="min-h-screen bg-background">
@@ -235,6 +236,16 @@ export default function DashboardPage() {
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Gestión
+                </Button>
+              )}
+              {hasPermission(user.role, "view_injured_players") && (
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/injured-players")}
+                  className="text-white hover:bg-white/20"
+                >
+                  <Stethoscope className="h-4 w-4 mr-2" />
+                  Lesiones
                 </Button>
               )}
               <Button variant="ghost" onClick={() => router.push("/areas")} className="text-white hover:bg-white/20">
@@ -599,10 +610,11 @@ export default function DashboardPage() {
 
       {showIndicesModal && selectedDivision !== "all" && user && (
         <IndicesManager
-          division={selectedDivision}
+          division={selectedDivision as string}
           userName={user.name}
-          userId={user.id} // Pass user.id for database storage
+          userId={user.id}
           onClose={() => setShowIndicesModal(false)}
+          canEdit={user.role === "dirigente" || user.role === "entrenador"}
         />
       )}
     </div>

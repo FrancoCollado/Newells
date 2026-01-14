@@ -7,6 +7,12 @@ export interface AreaReport {
   title: string
   content: string
   createdBy: string
+  attachments: Array<{
+    id: string
+    name: string
+    url: string
+    type: string
+  }>
 }
 
 export interface AreaEvent {
@@ -40,6 +46,7 @@ export async function getAreaReports(area: string, page = 0, limit = 10): Promis
     title: r.title,
     content: r.content,
     createdBy: r.created_by,
+    attachments: r.attachments || [],
   }))
 }
 
@@ -52,6 +59,7 @@ export async function saveAreaReport(report: Omit<AreaReport, "id" | "date">): P
       title: report.title,
       content: report.content,
       created_by: report.createdBy,
+      attachments: report.attachments,
     })
     .select()
     .single()
@@ -68,6 +76,7 @@ export async function saveAreaReport(report: Omit<AreaReport, "id" | "date">): P
     title: data.title,
     content: data.content,
     createdBy: data.created_by,
+    attachments: data.attachments || [],
   }
 }
 

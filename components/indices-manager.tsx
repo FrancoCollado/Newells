@@ -40,6 +40,7 @@ interface IndicesManagerProps {
   userName: string
   userId: string // Added userId prop
   onClose: () => void
+  canEdit?: boolean // Nuevo prop para controlar si puede editar o solo ver
 }
 
 const indiceTypeIcons: Record<IndiceType, React.ReactNode> = {
@@ -53,7 +54,7 @@ const indiceTypeIcons: Record<IndiceType, React.ReactNode> = {
   ONDULACIONES: <Activity className="h-4 w-4" />,
 }
 
-export function IndicesManager({ division, userName, userId, onClose }: IndicesManagerProps) {
+export function IndicesManager({ division, userName, userId, onClose, canEdit = true }: IndicesManagerProps) {
   const { toast } = useToast()
   const [selectedType, setSelectedType] = useState<IndiceType | null>(null)
   const [selectedSubtype, setSelectedSubtype] = useState<IndiceSubtype | undefined>(undefined)
@@ -217,10 +218,12 @@ export function IndicesManager({ division, userName, userId, onClose }: IndicesM
           {indiceTypeLabels[selectedType!]}
           {selectedSubtype && ` - ${indiceSubtypeLabels[selectedSubtype]}`}
         </h3>
-        <Button onClick={() => setShowUploadForm(true)} size="sm" className="bg-red-700 hover:bg-red-800">
-          <Upload className="h-4 w-4 mr-2" />
-          Subir
-        </Button>
+        {canEdit && (
+          <Button onClick={() => setShowUploadForm(true)} size="sm" className="bg-red-700 hover:bg-red-800">
+            <Upload className="h-4 w-4 mr-2" />
+            Subir
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -250,14 +253,16 @@ export function IndicesManager({ division, userName, userId, onClose }: IndicesM
                     </CardTitle>
                     <CardDescription className="text-xs">Por: {indice.created_by}</CardDescription>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => handleDelete(indice)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDelete(indice)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pb-3">
@@ -279,7 +284,7 @@ export function IndicesManager({ division, userName, userId, onClose }: IndicesM
         </div>
       )}
 
-      {showUploadForm && (
+      {showUploadForm && canEdit && (
         <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -351,7 +356,9 @@ export function IndicesManager({ division, userName, userId, onClose }: IndicesM
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-2xl">Gestión de Índices</DialogTitle>
+              <DialogTitle className="text-2xl">
+                {canEdit ? "Gestión de Índices" : "Visualización de Índices"}
+              </DialogTitle>
               <DialogDescription>División: {division}</DialogDescription>
             </div>
             {selectedType && (

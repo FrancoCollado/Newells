@@ -1,16 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentUser, type User } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { toast } from "@/components/ui/use-toast"
 import {
   ArrowLeft,
   LogOut,
@@ -25,6 +27,8 @@ import {
   Save,
   Trash2,
   Loader2,
+  Upload,
+  X,
 } from "lucide-react"
 import {
   type AreaReport,
@@ -46,7 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { canEditArea } from "@/lib/rbac"
+import { canEditArea, canViewAllAreas } from "@/lib/rbac"
 
 export default function AreasPage() {
   const router = useRouter()
@@ -69,64 +73,48 @@ export default function AreasPage() {
   const [newEventDescription, setNewEventDescription] = useState("")
   const [showNewReportForm, setShowNewReportForm] = useState(false)
   const [showNewEventForm, setShowNewEventForm] = useState(false)
+  const [newReportAttachments, setNewReportAttachments] = useState<
+    Array<{
+      id: string
+      name: string
+      type: string
+      url: string
+    }>
+  >([])
 
   // Loading & UI states
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "report" | "event" } | null>(null)
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true)
-      const currentUser = await getCurrentUser()
-      if (currentUser) {
-        setUser(currentUser)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const newAttachment = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          url: event.target?.result as string,
+        }
+        setNewReportAttachments((prev) => [...prev, newAttachment])
       }
-      setLoading(false)
+      reader.readAsDataURL(file)
+    })
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
-    init()
-  }, [])
-
-  useEffect(() => {
-    const loadAreaData = async () => {
-      if (!selectedArea) return
-      setLoading(true)
-
-      // Reset pagination state
-      setReportsPage(0)
-      setHasMoreReports(true)
-
-      const [fetchedReports, fetchedEvents] = await Promise.all([
-        getAreaReports(selectedArea, 0, REPORTS_LIMIT),
-        getAreaEvents(selectedArea),
-      ])
-
-      setReports(fetchedReports)
-      if (fetchedReports.length < REPORTS_LIMIT) setHasMoreReports(false)
-
-      setEvents(fetchedEvents)
-      setLoading(false)
-    }
-    loadAreaData()
-  }, [selectedArea])
-
-  const handleLoadMoreReports = async () => {
-    if (!hasMoreReports) return
-    setLoadingMoreReports(true)
-    const nextPage = reportsPage + 1
-    const newReports = await getAreaReports(selectedArea, nextPage, REPORTS_LIMIT)
-
-    if (newReports.length < REPORTS_LIMIT) {
-      setHasMoreReports(false)
-    }
-
-    setReports([...reports, ...newReports])
-    setReportsPage(nextPage)
-    setLoadingMoreReports(false)
   }
 
-  const handleLogout = () => {
-    router.push("/login")
+  const removeAttachment = (id: string) => {
+    setNewReportAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
   const handleSaveReport = async () => {
@@ -143,12 +131,14 @@ export default function AreasPage() {
       title: newReportTitle,
       content: newReportContent,
       createdBy: user.name,
+      attachments: newReportAttachments,
     })
 
     if (newReport) {
       setReports([newReport, ...reports])
       setNewReportTitle("")
       setNewReportContent("")
+      setNewReportAttachments([])
       setShowNewReportForm(false)
     }
     setActionLoading(false)
@@ -197,6 +187,73 @@ export default function AreasPage() {
     setActionLoading(false)
   }
 
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true)
+      const currentUser = await getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
+      }
+      setLoading(false)
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    if (user && !canViewAllAreas(user.role) && !canEditArea(user.role, selectedArea)) {
+      // Solo redirigir si el usuario NO puede ver todas las áreas Y NO puede editar esta área específica
+      toast({
+        title: "Acceso denegado",
+        description: "No tiene permisos para ver esta área",
+        variant: "destructive",
+      })
+      router.push("/dashboard")
+    }
+  }, [user, selectedArea, router, toast])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user && selectedArea) {
+        setLoading(true)
+
+        setReportsPage(0)
+        setHasMoreReports(true)
+
+        const [fetchedReports, fetchedEvents] = await Promise.all([
+          getAreaReports(selectedArea, 0, REPORTS_LIMIT),
+          getAreaEvents(selectedArea),
+        ])
+
+        setReports(fetchedReports)
+        if (fetchedReports.length < REPORTS_LIMIT) setHasMoreReports(false)
+
+        setEvents(fetchedEvents)
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [user, selectedArea])
+
+  const handleLoadMoreReports = async () => {
+    if (!hasMoreReports) return
+    setLoadingMoreReports(true)
+    const nextPage = reportsPage + 1
+    const newReports = await getAreaReports(selectedArea, nextPage, REPORTS_LIMIT)
+
+    if (newReports.length < REPORTS_LIMIT) {
+      setHasMoreReports(false)
+    }
+
+    setReports([...reports, ...newReports])
+    setReportsPage(nextPage)
+    setLoadingMoreReports(false)
+  }
+
+  const handleLogout = () => {
+    router.push("/login")
+  }
+
   if (loading && !user) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -228,6 +285,7 @@ export default function AreasPage() {
   const eventDates = areaEvents.map((e) => e.date)
 
   const canEdit = canEditArea(user.role, selectedArea)
+  const canViewAll = canViewAllAreas(user.role)
 
   return (
     <div className="min-h-screen bg-background">
@@ -380,7 +438,9 @@ export default function AreasPage() {
                           <FileText className={`h-5 w-5 ${area.color}`} />
                           Informes Generales
                         </CardTitle>
-                        <CardDescription>Reportes y documentación del área</CardDescription>
+                        <CardDescription>
+                          {canEdit ? "Reportes y documentación del área" : "Visualización de reportes (solo lectura)"}
+                        </CardDescription>
                       </div>
                       {canEdit && (
                         <Button onClick={() => setShowNewReportForm(!showNewReportForm)}>
@@ -410,6 +470,50 @@ export default function AreasPage() {
                             rows={6}
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label>Archivos Adjuntos</Label>
+                          <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              onChange={handleFileChange}
+                              multiple
+                              className="hidden"
+                              id="area-file-upload"
+                            />
+                            <label htmlFor="area-file-upload" className="cursor-pointer">
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs font-medium mb-1">Haga clic para adjuntar archivos</p>
+                              <p className="text-xs text-muted-foreground">PDF, imágenes, documentos</p>
+                            </label>
+                          </div>
+
+                          {newReportAttachments.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                              <p className="text-xs font-medium">
+                                Archivos seleccionados ({newReportAttachments.length})
+                              </p>
+                              {newReportAttachments.map((file) => (
+                                <div
+                                  key={file.id}
+                                  className="flex items-center gap-2 p-2 bg-background rounded group hover:bg-muted/80 transition-colors"
+                                >
+                                  <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-xs flex-1 truncate">{file.name}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeAttachment(file.id)}
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <Button onClick={handleSaveReport} className="flex-1" disabled={actionLoading}>
                             {actionLoading ? (
@@ -438,29 +542,50 @@ export default function AreasPage() {
                     ) : (
                       <div className="space-y-4 max-h-[600px] overflow-y-auto">
                         {areaReports.map((report) => (
-                          <div key={report.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-2">
+                          <div key={report.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
                               <div className="flex-1">
-                                <h4 className="font-semibold text-lg">{report.title}</h4>
-                                <div className="flex items-center gap-3 mt-1">
-                                  <Badge variant="outline" className="text-xs">
-                                    {new Date(report.date).toLocaleDateString("es-AR")}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">Por: {report.createdBy}</span>
-                                </div>
+                                <h4 className="font-semibold">{report.title}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(report.date).toLocaleDateString("es-AR", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}{" "}
+                                  - Por: {report.createdBy}
+                                </p>
                               </div>
                               {canEdit && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => setItemToDelete({ id: report.id, type: "report" })}
-                                  className="text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.content}</p>
+                            {report.attachments && report.attachments.length > 0 && (
+                              <div className="mt-3 pt-3 border-t space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground mb-2">
+                                  Archivos adjuntos ({report.attachments.length}):
+                                </p>
+                                {report.attachments.map((attachment) => (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors text-xs"
+                                  >
+                                    <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                    <span className="flex-1 truncate">{attachment.name}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {hasMoreReports && (
