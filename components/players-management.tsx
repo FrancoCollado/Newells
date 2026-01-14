@@ -385,7 +385,7 @@ export function PlayersManagement() {
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Agregar Nuevo Jugador</DialogTitle>
             <DialogDescription>Complete los datos del nuevo jugador</DialogDescription>
@@ -545,7 +545,7 @@ export function PlayersManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Jugador</DialogTitle>
             <DialogDescription>Modifique los datos del jugador</DialogDescription>

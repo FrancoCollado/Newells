@@ -455,7 +455,20 @@ export default function PlayerDetailPage() {
                   </div>
                 )}
 
-                <PlayerLeagueStatsTabs player={player} />
+                <PlayerLeagueStatsTabs
+                  player={player}
+                  canEditPhysicalData={canEditPhysicalData}
+                  isEditingPhysicalData={isEditingPhysicalData}
+                  editedAge={editedAge}
+                  editedWeight={editedWeight}
+                  editedHeight={editedHeight}
+                  onEditPhysicalData={() => setIsEditingPhysicalData(true)}
+                  onSavePhysicalData={handleSavePhysicalData}
+                  onCancelPhysicalDataEdit={handleCancelPhysicalDataEdit}
+                  onAgeChange={setEditedAge}
+                  onWeightChange={setEditedWeight}
+                  onHeightChange={setEditedHeight}
+                />
               </CardContent>
             </Card>
           </div>
