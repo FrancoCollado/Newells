@@ -82,7 +82,9 @@ export async function getCurrentUser(): Promise<User | null> {
       data: { session },
     } = await supabase.auth.getSession()
 
-    if (!session?.user) return null
+    if (!session?.user) {
+      return null
+    }
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -91,7 +93,7 @@ export async function getCurrentUser(): Promise<User | null> {
       .single()
 
     if (profileError) {
-      console.error("Error obteniendo perfil:", profileError.message)
+      console.error("[v0] Error obteniendo perfil:", profileError.message)
       // Fallback a user_metadata
       return {
         id: session.user.id,
@@ -108,6 +110,7 @@ export async function getCurrentUser(): Promise<User | null> {
       role: profile.role as UserRole,
     }
   } catch (error) {
+    console.error("[v0] getCurrentUser: Error inesperado:", error)
     return null
   }
 }

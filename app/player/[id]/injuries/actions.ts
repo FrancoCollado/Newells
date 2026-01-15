@@ -54,6 +54,11 @@ export async function saveInjuryAction(injuryData: any) {
     }
 
     console.log("[v0] Lesión guardada exitosamente")
+
+    console.log("[v0] Actualizando estado del jugador a lesionado")
+    await updatePlayerInjuryStatus(injuryData.playerId, true)
+    console.log("[v0] Estado del jugador actualizado")
+
     return { success: true, data }
   } catch (error: any) {
     console.error("[v0] Error en saveInjuryAction:", error.message)

@@ -244,14 +244,14 @@ function mapDbToMedicalRecord(dbRecord: any): MedicalRecord {
 export async function getMedicalRecord(playerId: string): Promise<MedicalRecord | null> {
   const supabase = await createServerClient()
 
-  const { data, error } = await supabase.from("medical_records").select("*").eq("player_id", playerId).single()
+  const { data, error } = await supabase.from("medical_records").select("*").eq("player_id", playerId).maybeSingle()
 
   if (error) {
-    if (error.code === "PGRST116") {
-      // No record found
-      return null
-    }
     throw error
+  }
+
+  if (!data) {
+    return null
   }
 
   return mapDbToMedicalRecord(data)
