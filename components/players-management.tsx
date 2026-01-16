@@ -127,10 +127,10 @@ export function PlayersManagement() {
   }
 
   const handleAdd = async () => {
-    if (!formData.name || !formData.age || !formData.height || !formData.weight) {
+    if (!formData.name) {
       toast({
         title: "Error",
-        description: "Todos los campos obligatorios deben completarse",
+        description: "El nombre del jugador es obligatorio",
         variant: "destructive",
       })
       return
@@ -150,10 +150,10 @@ export function PlayersManagement() {
     const newPlayer = await createPlayer({
       name: formData.name,
       division: formData.division,
-      age: Number.parseInt(formData.age),
+      age: formData.age ? Number.parseInt(formData.age) : 0,
       position: formData.position,
-      height: Number.parseInt(formData.height),
-      weight: Number.parseInt(formData.weight),
+      height: formData.height ? Number.parseInt(formData.height) : 0,
+      weight: formData.weight ? Number.parseInt(formData.weight) : 0,
       extendedData: extendedData,
       leagueTypes: formData.leagueTypes,
       loanStatus: formData.isOnLoan ? "PRESTAMO" : null,
@@ -180,10 +180,10 @@ export function PlayersManagement() {
   }
 
   const handleEdit = async () => {
-    if (!selectedPlayer || !formData.name || !formData.age || !formData.height || !formData.weight) {
+    if (!selectedPlayer || !formData.name) {
       toast({
         title: "Error",
-        description: "Todos los campos obligatorios deben completarse",
+        description: "El nombre del jugador es obligatorio",
         variant: "destructive",
       })
       return
@@ -203,10 +203,10 @@ export function PlayersManagement() {
     const updatedPlayer = await updatePlayer(selectedPlayer.id, {
       name: formData.name,
       division: formData.division,
-      age: Number.parseInt(formData.age),
+      age: formData.age ? Number.parseInt(formData.age) : 0,
       position: formData.position,
-      height: Number.parseInt(formData.height),
-      weight: Number.parseInt(formData.weight),
+      height: formData.height ? Number.parseInt(formData.height) : 0,
+      weight: formData.weight ? Number.parseInt(formData.weight) : 0,
       extendedData: extendedData,
       leagueTypes: formData.leagueTypes,
       loanStatus: formData.isOnLoan ? "PRESTAMO" : null,
@@ -494,7 +494,7 @@ export function PlayersManagement() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="add-age">Edad *</Label>
+                <Label htmlFor="add-age">Edad</Label>
                 <Input
                   id="add-age"
                   type="number"
@@ -505,7 +505,7 @@ export function PlayersManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="add-height">Altura (cm) *</Label>
+                <Label htmlFor="add-height">Altura (cm)</Label>
                 <Input
                   id="add-height"
                   type="number"
@@ -516,7 +516,7 @@ export function PlayersManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="add-weight">Peso (kg) *</Label>
+                <Label htmlFor="add-weight">Peso (kg)</Label>
                 <Input
                   id="add-weight"
                   type="number"
@@ -654,7 +654,7 @@ export function PlayersManagement() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-age">Edad *</Label>
+                <Label htmlFor="edit-age">Edad</Label>
                 <Input
                   id="edit-age"
                   type="number"
@@ -665,7 +665,7 @@ export function PlayersManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-height">Altura (cm) *</Label>
+                <Label htmlFor="edit-height">Altura (cm)</Label>
                 <Input
                   id="edit-height"
                   type="number"
@@ -676,7 +676,7 @@ export function PlayersManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-weight">Peso (kg) *</Label>
+                <Label htmlFor="edit-weight">Peso (kg)</Label>
                 <Input
                   id="edit-weight"
                   type="number"
