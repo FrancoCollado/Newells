@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Search, Loader2, FileText } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Loader2, FileText, Home } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -39,6 +39,7 @@ export function PlayersManagement() {
   const [players, setPlayers] = useState<Player[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [divisionFilter, setDivisionFilter] = useState<Division | "todas">("todas")
+  const [pensionFilter, setPensionFilter] = useState<"todos" | "pensionados" | "no-pensionados">("todos")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -72,12 +73,25 @@ export function PlayersManagement() {
       loadPlayers()
     }, 300)
     return () => clearTimeout(timer)
-  }, [divisionFilter, page, searchTerm])
+  }, [divisionFilter, page, searchTerm, pensionFilter])
 
   const loadPlayers = async () => {
     setLoading(true)
     const data = await getPlayersByDivision(divisionFilter, page, ITEMS_PER_PAGE, searchTerm)
-    setPlayers(data)
+    console.log("[v0] Jugadores cargados de BD:", data.length)
+    console.log("[v0] Filtro de pensión actual:", pensionFilter)
+    console.log("[v0] Jugadores con isPensioned definido:", data.filter((p) => p.isPensioned !== undefined).length)
+    console.log("[v0] Jugadores pensionados:", data.filter((p) => p.isPensioned === true).length)
+
+    let filteredData = data
+    if (pensionFilter === "pensionados") {
+      filteredData = data.filter((p) => p.isPensioned === true)
+    } else if (pensionFilter === "no-pensionados") {
+      filteredData = data.filter((p) => !p.isPensioned)
+    }
+
+    console.log("[v0] Jugadores después de filtrar:", filteredData.length)
+    setPlayers(filteredData)
     setHasMore(data.length === ITEMS_PER_PAGE)
     setLoading(false)
   }
@@ -85,6 +99,11 @@ export function PlayersManagement() {
   // Reset page when filters change
   const handleFilterChange = (val: Division | "todas") => {
     setDivisionFilter(val)
+    setPage(0)
+  }
+
+  const handlePensionFilterChange = (val: "todos" | "pensionados" | "no-pensionados") => {
+    setPensionFilter(val)
     setPage(0)
   }
 
@@ -268,7 +287,7 @@ export function PlayersManagement() {
     })
   }
 
-  if (loading) {
+  if (loading && players.length === 0) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-red-700" />
@@ -279,14 +298,14 @@ export function PlayersManagement() {
   return (
     <div className="space-y-4">
       {/* Actions */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-1 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar jugador..." value={searchTerm} onChange={handleSearchChange} className="pl-10" />
           </div>
           <Select value={divisionFilter} onValueChange={(value) => handleFilterChange(value as Division | "todas")}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar por división" />
             </SelectTrigger>
             <SelectContent>
@@ -304,6 +323,20 @@ export function PlayersManagement() {
               <SelectItem value="12">12va División</SelectItem>
               <SelectItem value="13">13va División</SelectItem>
               <SelectItem value="arqueros">Arqueros</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={pensionFilter}
+            onValueChange={(value) => handlePensionFilterChange(value as "todos" | "pensionados" | "no-pensionados")}
+          >
+            <SelectTrigger className="w-[180px]">
+              <Home className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar por pensión" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="pensionados">Pensionados</SelectItem>
+              <SelectItem value="no-pensionados">No pensionados</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -328,13 +361,14 @@ export function PlayersManagement() {
                 <TableHead>Edad</TableHead>
                 <TableHead>Altura</TableHead>
                 <TableHead>Peso</TableHead>
+                <TableHead>Pensión</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {players.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No se encontraron jugadores
                   </TableCell>
                 </TableRow>
@@ -349,6 +383,16 @@ export function PlayersManagement() {
                     <TableCell>{player.age} años</TableCell>
                     <TableCell>{player.height} cm</TableCell>
                     <TableCell>{player.weight} kg</TableCell>
+                    <TableCell>
+                      {player.isPensioned ? (
+                        <Badge className="bg-blue-600 text-white">
+                          <Home className="h-3 w-3 mr-1" />
+                          Sí
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">No</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(player)}>
@@ -688,7 +732,7 @@ export function PlayersManagement() {
               onClick={() => setShowExtendedDataDialog(true)}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Datos Administrativos (Opcional)
+              Datos Administrativos
             </Button>
           </div>
           <DialogFooter>

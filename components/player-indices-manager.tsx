@@ -21,7 +21,6 @@ import {
   Heart,
   Moon,
   TrendingUp,
-  Zap,
 } from "lucide-react"
 import {
   type PlayerIndice,
@@ -45,9 +44,7 @@ const indiceTypeIcons: Record<IndiceType, React.ReactNode> = {
   GPS: <Activity className="h-4 w-4" />,
   RPE: <Heart className="h-4 w-4" />,
   PAUTAS_FUERZA: <TrendingUp className="h-4 w-4" />,
-  DOLOR_MUSCULAR: <Zap className="h-4 w-4" />,
-  ESTRES: <BarChart3 className="h-4 w-4" />,
-  SUENO: <Moon className="h-4 w-4" />,
+  WELLNESS: <Moon className="h-4 w-4" />,
   UNIDAD_ARBITRARIA: <BarChart3 className="h-4 w-4" />,
   ONDULACIONES: <Activity className="h-4 w-4" />,
 }
@@ -63,16 +60,7 @@ export function PlayerIndicesManager({ playerId, playerName, userId, onClose }: 
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  const indiceTypes: IndiceType[] = [
-    "GPS",
-    "RPE",
-    "PAUTAS_FUERZA",
-    "DOLOR_MUSCULAR",
-    "ESTRES",
-    "SUENO",
-    "UNIDAD_ARBITRARIA",
-    "ONDULACIONES",
-  ]
+  const indiceTypes: IndiceType[] = ["GPS", "RPE", "PAUTAS_FUERZA", "WELLNESS", "UNIDAD_ARBITRARIA", "ONDULACIONES"]
 
   useEffect(() => {
     if (selectedType) {

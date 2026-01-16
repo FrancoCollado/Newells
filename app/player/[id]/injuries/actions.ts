@@ -5,6 +5,7 @@ import { getPlayerInjuries } from "@/lib/injuries"
 import { getPlayerIllnesses } from "@/lib/illnesses"
 import { createIllness, type CreateIllnessParams } from "@/lib/illnesses"
 import { updatePlayerInjuryStatus } from "@/lib/players"
+import { createMedicalStudy, getMedicalStudiesByPlayer } from "@/lib/medical-studies" // Added medical studies imports
 
 export async function saveInjuryAction(injuryData: any) {
   try {
@@ -103,6 +104,42 @@ export async function updatePlayerInjuryStatusAction(playerId: string, isInjured
     return { success: true }
   } catch (error) {
     console.error("[v0] Error en updatePlayerInjuryStatusAction:", error)
+    return { success: false, error: String(error) }
+  }
+}
+
+export async function getPlayerStudiesAction(playerId: string) {
+  try {
+    console.log("[v0] Obteniendo estudios complementarios del jugador:", playerId)
+    const studies = await getMedicalStudiesByPlayer(playerId)
+    console.log("[v0] Estudios obtenidos:", studies.length)
+    return studies
+  } catch (error) {
+    console.error("[v0] Error en getPlayerStudiesAction:", error)
+    return []
+  }
+}
+
+export async function saveStudyAction(
+  playerId: string,
+  uploadedBy: string,
+  uploadedByName: string,
+  observations: string,
+  attachments: Array<{ id: string; name: string; type: string; url: string }>,
+) {
+  try {
+    console.log("[v0] Guardando estudio complementario para jugador:", playerId)
+    const study = await createMedicalStudy({
+      playerId,
+      uploadedBy,
+      uploadedByName,
+      observations,
+      attachments,
+    })
+    console.log("[v0] Estudio guardado exitosamente:", study.id)
+    return { success: true, data: study }
+  } catch (error) {
+    console.error("[v0] Error en saveStudyAction:", error)
     return { success: false, error: String(error) }
   }
 }

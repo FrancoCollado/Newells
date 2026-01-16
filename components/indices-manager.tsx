@@ -10,20 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import {
-  BarChart3,
-  Upload,
-  FileText,
-  Download,
-  Trash2,
-  Loader2,
-  X,
-  Activity,
-  Heart,
-  Moon,
-  TrendingUp,
-  Zap,
-} from "lucide-react"
+import { BarChart3, Upload, FileText, Download, Trash2, Loader2, X, Activity, Heart, TrendingUp } from "lucide-react"
 import {
   type Indice,
   type IndiceType,
@@ -47,9 +34,7 @@ const indiceTypeIcons: Record<IndiceType, React.ReactNode> = {
   GPS: <Activity className="h-4 w-4" />,
   RPE: <Heart className="h-4 w-4" />,
   PAUTAS_FUERZA: <TrendingUp className="h-4 w-4" />,
-  DOLOR_MUSCULAR: <Zap className="h-4 w-4" />,
-  ESTRES: <BarChart3 className="h-4 w-4" />,
-  SUENO: <Moon className="h-4 w-4" />,
+  WELLNESS: <BarChart3 className="h-4 w-4" />,
   UNIDAD_ARBITRARIA: <BarChart3 className="h-4 w-4" />,
   ONDULACIONES: <Activity className="h-4 w-4" />,
 }
@@ -65,16 +50,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  const indiceTypes: IndiceType[] = [
-    "GPS",
-    "RPE",
-    "PAUTAS_FUERZA",
-    "DOLOR_MUSCULAR",
-    "ESTRES",
-    "SUENO",
-    "UNIDAD_ARBITRARIA",
-    "ONDULACIONES",
-  ]
+  const indiceTypes: IndiceType[] = ["GPS", "RPE", "PAUTAS_FUERZA", "WELLNESS", "UNIDAD_ARBITRARIA", "ONDULACIONES"]
 
   useEffect(() => {
     if (selectedType) {

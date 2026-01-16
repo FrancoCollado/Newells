@@ -37,7 +37,6 @@ import {
   BarChart3,
   ClipboardList,
   RefreshCw,
-  FileTerminal as FileMedical,
   Stethoscope,
 } from "lucide-react"
 import { hasPermission } from "@/lib/rbac" // Importar función para verificar permisos
@@ -365,10 +364,9 @@ export default function PlayerDetailPage() {
                   {canViewMedicalRecord && (
                     <Button
                       onClick={() => router.push(`/player/${player.id}/medical-record`)}
-                      variant="outline"
-                      className="mt-2 w-full border-blue-700 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
                     >
-                      <FileMedical className="h-4 w-4 mr-2" />
+                      <Stethoscope className="h-4 w-4 mr-2" />
                       Historia Clínica
                     </Button>
                   )}
@@ -376,11 +374,10 @@ export default function PlayerDetailPage() {
                   {canViewMedicalRecord && (
                     <Button
                       onClick={() => router.push(`/player/${player.id}/injuries`)}
-                      variant="outline"
-                      className="mt-2 w-full border-orange-700 text-orange-700 bg-orange-50 hover:bg-orange-100"
+                      className="mt-3 w-full bg-orange-600 hover:bg-orange-700"
                     >
-                      <Stethoscope className="h-4 w-4 mr-2" />
-                      Lesiones
+                      <Activity className="h-4 w-4 mr-2" />
+                      Lesiones y enfermedades
                     </Button>
                   )}
 

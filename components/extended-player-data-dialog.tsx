@@ -1,20 +1,28 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import type { PlayerExtendedData } from "@/lib/players"
-import { FileText } from "lucide-react"
+import { FileText, Save } from "lucide-react"
 
 interface ExtendedPlayerDataDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   extendedData?: PlayerExtendedData
-  onSave: (data: PlayerExtendedData) => void
+  onSave: (data: PlayerExtendedData) => Promise<void> | void
   readOnly?: boolean
 }
 
@@ -26,16 +34,35 @@ export function ExtendedPlayerDataDialog({
   readOnly = false,
 }: ExtendedPlayerDataDialogProps) {
   const [formData, setFormData] = useState<PlayerExtendedData>(extendedData || {})
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setFormData(extendedData || {})
-  }, [extendedData])
+    setError(null)
+  }, [extendedData, open])
 
   const handleChange = (field: keyof PlayerExtendedData, value: string | boolean | number) => {
     const updated = { ...formData, [field]: value === "" ? undefined : value }
     setFormData(updated)
-    if (!readOnly) {
-      onSave(updated)
+    setError(null)
+  }
+
+  const handleSave = async () => {
+    if (readOnly) return
+
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      await onSave(formData)
+      // Solo cerrar si el guardado fue exitoso
+      onOpenChange(false)
+    } catch (err) {
+      console.error("[v0] Error al guardar datos administrativos:", err)
+      setError("Error al guardar los datos. Por favor intente nuevamente.")
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -52,7 +79,11 @@ export function ExtendedPlayerDataDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">{error}</div>
+        )}
+
+        <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
           <div className="space-y-6">
             {/* Datos Personales */}
             <div className="space-y-4">
@@ -106,6 +137,61 @@ export function ExtendedPlayerDataDialog({
                     value={formData.admissionDate || ""}
                     onChange={(e) => handleChange("admissionDate", e.target.value)}
                     disabled={readOnly}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Pensión</Label>
+                  <div className="flex items-center space-x-2 h-10 px-3 border rounded-md bg-background">
+                    <Checkbox
+                      id="isPensioned"
+                      checked={formData.isPensioned || false}
+                      onCheckedChange={(checked) => handleChange("isPensioned", checked as boolean)}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="isPensioned" className="font-normal cursor-pointer">
+                      Jugador pensionado
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-red-700 bg-red-50 p-2 rounded">Datos Escolares</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Alumno Regular</Label>
+                  <div className="flex items-center space-x-2 h-10 px-3 border rounded-md bg-background">
+                    <Checkbox
+                      id="isRegularStudent"
+                      checked={formData.isRegularStudent || false}
+                      onCheckedChange={(checked) => handleChange("isRegularStudent", checked as boolean)}
+                      disabled={readOnly}
+                    />
+                    <Label htmlFor="isRegularStudent" className="font-normal cursor-pointer">
+                      Sí, es alumno regular
+                    </Label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="schoolYear">Año en Curso</Label>
+                  <Input
+                    id="schoolYear"
+                    placeholder="Ej: 5to año secundario"
+                    value={formData.schoolYear || ""}
+                    onChange={(e) => handleChange("schoolYear", e.target.value)}
+                    disabled={readOnly}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="schoolSituation">Situación Escolar</Label>
+                  <Textarea
+                    id="schoolSituation"
+                    placeholder="Descripción de la situación escolar del jugador..."
+                    value={formData.schoolSituation || ""}
+                    onChange={(e) => handleChange("schoolSituation", e.target.value)}
+                    disabled={readOnly}
+                    rows={3}
                   />
                 </div>
               </div>
@@ -425,57 +511,72 @@ export function ExtendedPlayerDataDialog({
                   )}
                 </div>
 
-                {/* Jugador a Préstamo */}
+                {/* Pasaporte Comunitario */}
                 <div className="space-y-3 border-l-2 border-red-200 pl-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="isOnLoan"
-                      checked={formData.isOnLoan || false}
+                      id="hasCommunityPassport"
+                      checked={formData.hasCommunityPassport || false}
                       onCheckedChange={(checked) => {
-                        handleChange("isOnLoan", checked as boolean)
+                        handleChange("hasCommunityPassport", checked as boolean)
                         if (!checked) {
-                          handleChange("loanYear", "")
-                          handleChange("loanClub", "")
+                          handleChange("communityPassportDetails", "")
                         }
                       }}
                       disabled={readOnly}
                     />
-                    <Label htmlFor="isOnLoan" className="font-normal cursor-pointer">
-                      Jugador a Préstamo
+                    <Label htmlFor="hasCommunityPassport" className="font-normal cursor-pointer">
+                      Pasaporte Comunitario
                     </Label>
                   </div>
-                  {formData.isOnLoan && (
-                    <div className="ml-6 space-y-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="loanYear">Año del Préstamo</Label>
-                        <Input
-                          id="loanYear"
-                          type="number"
-                          placeholder="Ej: 2023"
-                          value={formData.loanYear || ""}
-                          onChange={(e) => handleChange("loanYear", Number.parseInt(e.target.value) || "")}
-                          disabled={readOnly}
-                          min="1900"
-                          max="2100"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="loanClub">Club</Label>
-                        <Input
-                          id="loanClub"
-                          placeholder="Nombre del club"
-                          value={formData.loanClub || ""}
-                          onChange={(e) => handleChange("loanClub", e.target.value)}
-                          disabled={readOnly}
-                        />
-                      </div>
+                  {formData.hasCommunityPassport && (
+                    <div className="ml-6 space-y-2">
+                      <Label htmlFor="communityPassportDetails">Detalles</Label>
+                      <Input
+                        id="communityPassportDetails"
+                        placeholder="País, número de pasaporte..."
+                        value={formData.communityPassportDetails || ""}
+                        onChange={(e) => handleChange("communityPassportDetails", e.target.value)}
+                        disabled={readOnly}
+                      />
                     </div>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Observaciones */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-red-700">Observaciones Generales</h3>
+              <Textarea
+                id="observations"
+                placeholder="Cualquier información adicional relevante..."
+                value={formData.observations || ""}
+                onChange={(e) => handleChange("observations", e.target.value)}
+                disabled={readOnly}
+                rows={4}
+              />
+            </div>
           </div>
         </ScrollArea>
+
+        {!readOnly && (
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving} className="bg-red-600 hover:bg-red-700">
+              {isSaving ? (
+                <>Guardando...</>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar Datos
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

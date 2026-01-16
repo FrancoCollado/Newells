@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
@@ -14,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Loader2, Stethoscope } from "lucide-react"
+import { ArrowLeft, Loader2, Upload, FileText, X } from "lucide-react" // Added Upload, FileText, X
 import { hasPermission } from "@/lib/rbac"
 import { useToast } from "@/hooks/use-toast"
 
@@ -24,6 +26,8 @@ import {
   getPlayerInjuriesAction,
   getPlayerIllnessesAction,
   updatePlayerInjuryStatusAction,
+  getPlayerStudiesAction, // Added
+  saveStudyAction, // Added
 } from "./actions"
 import type { Injury } from "@/lib/injuries"
 import type { Illness } from "@/lib/illnesses"
@@ -41,6 +45,16 @@ export default function PlayerInjuriesPage() {
 
   const [existingInjuries, setExistingInjuries] = useState<Injury[]>([])
   const [existingIllnesses, setExistingIllnesses] = useState<Illness[]>([])
+  const [existingStudies, setExistingStudies] = useState<
+    Array<{
+      id: string
+      created_at: string
+      observations: string
+      uploaded_by: string
+      uploaded_by_name: string
+      attachments: Array<{ id: string; name: string; type: string; url: string }>
+    }>
+  >([])
 
   const [injuryData, setInjuryData] = useState({
     // Datos del evento lesional
@@ -125,6 +139,51 @@ export default function PlayerInjuriesPage() {
     attachments: [] as { fecha: string; descripcion: string }[],
   })
 
+  // Estado y handlers para estudios complementarios
+  const [studyData, setStudyData] = useState({
+    observations: "",
+    attachments: [] as Array<{ id: string; name: string; type: string; url: string }>,
+  })
+
+  const handleStudyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    Array.from(files).forEach((file) => {
+      if (file.type !== "application/pdf") {
+        toast({
+          title: "Archivo no permitido",
+          description: "Solo se permiten archivos PDF",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const newAttachment = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: file.type,
+          url: event.target?.result as string,
+        }
+        setStudyData((prev) => ({
+          ...prev,
+          attachments: [...prev.attachments, newAttachment],
+        }))
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeStudyAttachment = (id: string) => {
+    setStudyData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((a) => a.id !== id),
+    }))
+  }
+  // </CHANGE>
+
   const handleInjuryStatusChange = async (newStatus: boolean) => {
     if (!player) return
 
@@ -150,43 +209,66 @@ export default function PlayerInjuriesPage() {
       try {
         setLoading(true) // Moved setLoading(true) here
         const currentUser = await getCurrentUser()
+        const playerId = params.id as string // Defined playerId here
+
         if (!currentUser) {
-          router.push("/login") // Changed from router.push("/dashboard")
+          router.push("/login")
           return
         }
+
+        // Validar permiso para ver registros médicos
+        if (!hasPermission(currentUser.role, "view_medical_records")) {
+          router.push("/dashboard")
+          return
+        }
+
         setUser(currentUser)
 
-        const playerId = params.id as string
+        const foundPlayer = await getPlayerById(playerId)
+        if (!foundPlayer) {
+          router.push("/dashboard")
+          return
+        }
+        setPlayer(foundPlayer)
         console.log("[v0] Loading player data for ID:", playerId)
-        const playerData = await getPlayerById(playerId)
-        setPlayer(playerData)
+        // setPlayer(playerData) // This line is redundant if foundPlayer is used
         console.log("[v0] Player loaded:", {
-          name: playerData.name,
-          age: playerData.age,
-          height: playerData.height,
-          weight: playerData.weight,
-          leagueStatsCount: playerData.leagueStats?.length || 0,
-          leagueStats: playerData.leagueStats,
+          name: foundPlayer.name,
+          age: foundPlayer.age,
+          height: foundPlayer.height,
+          weight: foundPlayer.weight,
+          leagueStatsCount: foundPlayer.leagueStats?.length || 0,
+          leagueStats: foundPlayer.leagueStats,
         })
 
         // Actualizar el estado inicial de isInjured basado en los datos del jugador
-        if (playerData && playerData.isInjured !== undefined) {
-          setIsInjured(playerData.isInjured)
+        if (foundPlayer && foundPlayer.isInjured !== undefined) {
+          setIsInjured(foundPlayer.isInjured)
         }
 
         console.log("[v0] Cargando lesiones y enfermedades del jugador...")
-        const injuriesResult = await getPlayerInjuriesAction(playerId)
-        const illnessesResult = await getPlayerIllnessesAction(playerId)
+        // Cargando estudios complementarios y usando Promise.all
+        const [injuriesResult, illnessesResult, studiesResult] = await Promise.all([
+          getPlayerInjuriesAction(playerId),
+          getPlayerIllnessesAction(playerId),
+          getPlayerStudiesAction(playerId),
+        ])
+
+        console.log("[v0] Lesiones cargadas:", injuriesResult?.data?.length || 0)
+        console.log("[v0] Enfermedades cargadas:", illnessesResult?.data?.length || 0)
+        console.log("[v0] Estudios cargados:", studiesResult?.length || 0) // Adjusted log for studies
 
         if (injuriesResult.success) {
-          console.log("[v0] Lesiones cargadas:", injuriesResult.data.length)
+          // console.log("[v0] Lesiones cargadas:", injuriesResult.data.length)
           setExistingInjuries(injuriesResult.data)
         }
 
         if (illnessesResult.success) {
-          console.log("[v0] Enfermedades cargadas:", illnessesResult.data.length)
+          // console.log("[v0] Enfermedades cargadas:", illnessesResult.data.length)
           setExistingIllnesses(illnessesResult.data)
         }
+        // Set existing studies directly
+        setExistingStudies(studiesResult || [])
       } catch (error) {
         console.error("[v0] Error loading data:", error)
         toast({
@@ -207,6 +289,57 @@ export default function PlayerInjuriesPage() {
 
   const updateIllnessData = (field: string, value: any) => {
     setIllnessData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSaveStudy = async () => {
+    console.log("[v0] handleSaveStudy llamado")
+    console.log("[v0] player existe:", !!player)
+    console.log("[v0] user existe:", !!user)
+
+    if (!player || !user || !hasPermission(user.role, "edit_medical_records")) {
+      console.log("[v0] No pasa validación inicial")
+      return
+    }
+
+    if (!studyData.observations.trim() && studyData.attachments.length === 0) {
+      toast({
+        title: "Campos requeridos",
+        description: "Debe agregar observaciones o al menos un archivo PDF",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSaving(true)
+    try {
+      console.log("[v0] Guardando estudio complementario...")
+      // Assuming saveStudyAction takes playerId, userId, userName, observations, attachments
+      await saveStudyAction(player.id, user.id, user.name, studyData.observations, studyData.attachments)
+
+      toast({
+        title: "Estudio guardado",
+        description: "El estudio complementario se ha registrado correctamente",
+      })
+
+      // Recargar estudios
+      const studies = await getPlayerStudiesAction(player.id)
+      setExistingStudies(studies || [])
+
+      // Limpiar formulario
+      setStudyData({
+        observations: "",
+        attachments: [],
+      })
+    } catch (error) {
+      console.error("[v0] Error al guardar estudio:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el estudio complementario",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveInjury = async () => {
@@ -377,25 +510,20 @@ export default function PlayerInjuriesPage() {
       {" "}
       {/* Removed allowedRoles from AuthGuard */}
       <div className="min-h-screen bg-background">
-        <header className="border-b bg-gradient-to-r from-orange-700 to-orange-900 text-white">
+        <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
+          {" "}
+          {/* Changed gradient colors */}
           <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => router.push(`/player/${player.id}`)}
-                className="text-white hover:bg-white/20"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver al Perfil
-              </Button>
-            </div>
-            <div className="mt-2 flex items-center gap-3">
-              <Stethoscope className="h-6 w-6" />
-              <div>
-                <h1 className="text-2xl font-bold">Lesiones y Enfermedades</h1>
-                <p className="text-sm text-orange-100">{player.name}</p>
-              </div>
-            </div>
+            <Button
+              variant="ghost"
+              onClick={() => router.push(`/player/${player.id}`)}
+              className="text-white hover:bg-white/20 mb-2" // Added mb-2
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al perfil {/* Changed text */}
+            </Button>
+            <h1 className="text-2xl font-bold">Lesiones y enfermedades - {player.name}</h1>
+            <p className="text-sm text-red-100">Gestión médica del jugador</p> {/* Changed text and color */}
           </div>
         </header>
 
@@ -428,11 +556,16 @@ export default function PlayerInjuriesPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="lesiones">Lesiones Varias ({existingInjuries.length})</TabsTrigger>{" "}
-                  {/* Updated count */}
-                  <TabsTrigger value="enfermedades">Enfermedades ({existingIllnesses.length})</TabsTrigger>{" "}
-                  {/* Updated count */}
+                <TabsList className="grid w-full grid-cols-3">
+                  {" "}
+                  {/* Changed grid-cols-2 to grid-cols-3 */}
+                  <TabsTrigger value="lesiones">Lesiones Varias ({existingInjuries.length})</TabsTrigger>
+                  <TabsTrigger value="enfermedades">Enfermedades ({existingIllnesses.length})</TabsTrigger>
+                  <TabsTrigger value="estudios">
+                    {" "}
+                    {/* Added */}
+                    Estudios Complementarios ({existingStudies.length}) {/* Added */}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="lesiones" className="space-y-6">
@@ -1722,13 +1855,173 @@ export default function PlayerInjuriesPage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                <TabsContent value="estudios" className="space-y-6 mt-6">
+                  {" "}
+                  {/* Added */}
+                  {/* Formulario de nuevo estudio */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Subir Estudio Complementario</CardTitle>
+                      <CardDescription>Agregue estudios médicos en formato PDF con observaciones</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="study-observations">Observaciones</Label>
+                        <Textarea
+                          id="study-observations"
+                          placeholder="Ingrese observaciones sobre el estudio..."
+                          value={studyData.observations}
+                          onChange={(e) => setStudyData((prev) => ({ ...prev, observations: e.target.value }))}
+                          rows={4}
+                          disabled={!canEdit} // Add disabled attribute
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Archivos PDF *</Label>
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors">
+                          <input
+                            type="file"
+                            onChange={handleStudyFileChange}
+                            multiple
+                            accept="application/pdf"
+                            className="hidden"
+                            id="study-file-upload"
+                            disabled={!canEdit} // Add disabled attribute
+                          />
+                          <label htmlFor="study-file-upload" className="cursor-pointer block w-full h-full">
+                            {" "}
+                            {/* Make label block and full height */}
+                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm font-medium mb-1">
+                              Arrastre archivos PDF o haga clic para seleccionar
+                            </p>
+                            <p className="text-xs text-muted-foreground">Solo archivos PDF</p>
+                          </label>
+                        </div>
+
+                        {studyData.attachments.length > 0 && (
+                          <div className="space-y-2 mt-4">
+                            <p className="text-sm font-medium">
+                              Archivos seleccionados ({studyData.attachments.length})
+                            </p>
+                            {studyData.attachments.map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center gap-2 p-3 bg-muted rounded-lg group hover:bg-muted/80 transition-colors"
+                              >
+                                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm flex-1 truncate">{file.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeStudyAttachment(file.id)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  disabled={!canEdit} // Add disabled attribute
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={handleSaveStudy}
+                        disabled={saving || !canEdit} // Add canEdit to disabled condition
+                        className="w-full bg-red-700 hover:bg-red-800"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          "Guardar Estudio"
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  {/* Historial de estudios */}
+                  {existingStudies.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Historial de Estudios Complementarios</CardTitle>
+                        <CardDescription>
+                          {existingStudies.length} estudio{existingStudies.length !== 1 ? "s" : ""} registrado
+                          {existingStudies.length !== 1 ? "s" : ""}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {existingStudies.map((study) => (
+                          <Card key={study.id} className="bg-muted/30">
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <CardTitle className="text-base">Subido por: {study.uploaded_by_name}</CardTitle>
+                                  <CardDescription className="text-xs">
+                                    {new Date(study.created_at).toLocaleString("es-AR", {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {study.observations && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Observaciones:</Label>
+                                  <p className="text-sm mt-1 whitespace-pre-wrap">{study.observations}</p>
+                                </div>
+                              )}
+
+                              {study.attachments && study.attachments.length > 0 && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Archivos adjuntos:</Label>
+                                  <div className="space-y-2 mt-2">
+                                    {study.attachments.map((file) => (
+                                      <div key={file.id} className="flex items-center gap-2 p-2 bg-background rounded">
+                                        <FileText className="h-4 w-4 text-red-600" />
+                                        <a
+                                          href={file.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm flex-1 truncate hover:underline text-red-600"
+                                        >
+                                          {file.name}
+                                        </a>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
               </Tabs>
 
               {canEdit && (
                 <div className="mt-6 flex justify-end">
                   <Button
                     className="bg-orange-700 hover:bg-orange-800"
-                    onClick={activeTab === "lesiones" ? handleSaveInjury : handleSaveIllness}
+                    onClick={
+                      activeTab === "lesiones"
+                        ? handleSaveInjury
+                        : activeTab === "enfermedades"
+                          ? handleSaveIllness
+                          : handleSaveStudy
+                    } // Added condition for studies
                     disabled={saving}
                   >
                     {saving ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar Información"}

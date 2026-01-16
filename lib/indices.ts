@@ -1,14 +1,6 @@
 import { supabase } from "./supabase"
 
-export type IndiceType =
-  | "GPS"
-  | "RPE"
-  | "PAUTAS_FUERZA"
-  | "DOLOR_MUSCULAR"
-  | "ESTRES"
-  | "SUENO"
-  | "UNIDAD_ARBITRARIA"
-  | "ONDULACIONES"
+export type IndiceType = "GPS" | "RPE" | "PAUTAS_FUERZA" | "WELLNESS" | "UNIDAD_ARBITRARIA" | "ONDULACIONES"
 
 export type IndiceSubtype = "CRONICO" | "AGUDO" | "PRE_SESION" | "POST_SESION"
 
@@ -30,9 +22,7 @@ export const indiceTypeLabels: Record<IndiceType, string> = {
   GPS: "GPS",
   RPE: "RPE",
   PAUTAS_FUERZA: "Pautas de fuerza",
-  DOLOR_MUSCULAR: "Índice de dolor muscular",
-  ESTRES: "Estrés",
-  SUENO: "Sueño",
+  WELLNESS: "Wellness",
   UNIDAD_ARBITRARIA: "Unidad arbitraria",
   ONDULACIONES: "Ondulaciones",
 }
@@ -100,9 +90,7 @@ export async function createIndice(
       const fileExt = file.name.split(".").pop()
       const filePath = `indices/${crypto.randomUUID()}.${fileExt}`
 
-      const { error: uploadError } = await supabase.storage
-        .from("indices")
-        .upload(filePath, file)
+      const { error: uploadError } = await supabase.storage.from("indices").upload(filePath, file)
 
       if (uploadError) {
         console.error("Error uploading file:", uploadError)

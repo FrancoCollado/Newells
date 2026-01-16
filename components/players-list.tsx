@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, User, Loader2, Edit2, Save, X } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Search, User, Loader2, Edit2, Save, X, Home } from "lucide-react"
 import type { UserRole } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 
@@ -37,6 +38,7 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
   const [loadingMore, setLoadingMore] = useState(false)
   const [editingAttendanceId, setEditingAttendanceId] = useState<string | null>(null)
   const [editingAttendanceValue, setEditingAttendanceValue] = useState("")
+  const [pensionFilter, setPensionFilter] = useState<"todos" | "pensionados" | "no-pensionados">("todos")
 
   const ITEMS_PER_PAGE = 9
 
@@ -73,7 +75,23 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
     setLoadingMore(false)
   }
 
-  const filteredPlayers = players.filter((player) => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredPlayers = players
+    .filter((player) => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter((player) => {
+      if (pensionFilter !== "todos") {
+        console.log(
+          "[v0] Filtrando jugador:",
+          player.name,
+          "isPensioned:",
+          player.isPensioned,
+          "filtro:",
+          pensionFilter,
+        )
+      }
+      if (pensionFilter === "pensionados") return player.isPensioned === true
+      if (pensionFilter === "no-pensionados") return !player.isPensioned
+      return true
+    })
 
   const handlePlayerClick = (playerId: string) => {
     if (editingAttendanceId === playerId) return // Don't navigate if editing
@@ -133,15 +151,31 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar jugador..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar jugador..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={pensionFilter}
+          onValueChange={(value) => setPensionFilter(value as "todos" | "pensionados" | "no-pensionados")}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Home className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filtrar pensión" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="pensionados">Pensionados</SelectItem>
+            <SelectItem value="no-pensionados">No pensionados</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Players Grid */}
@@ -158,6 +192,14 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
               className="hover:shadow-lg transition-shadow cursor-pointer relative"
               onClick={() => handlePlayerClick(player.id)}
             >
+              <div className="absolute top-2 right-2 z-10">
+                {player.isPensioned && (
+                  <Badge className="bg-blue-600 text-white">
+                    <Home className="h-3 w-3 mr-1" />
+                    Pensionado
+                  </Badge>
+                )}
+              </div>
               <div className="absolute top-2 left-2 z-10">
                 {editingAttendanceId === player.id ? (
                   <div
