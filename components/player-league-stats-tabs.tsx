@@ -50,6 +50,8 @@ export function PlayerLeagueStatsTabs({
     goals: 0,
   }
 
+  const isGoalkeeper = player.division === "arqueros"
+
   const StatsGrid = ({ stats }: { stats: typeof afaStats }) => (
     <div className="grid grid-cols-3 gap-4">
       <Card>
@@ -76,7 +78,7 @@ export function PlayerLeagueStatsTabs({
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Target className="h-4 w-4 text-red-700" />
-            <p className="text-sm text-muted-foreground">Goles</p>
+            <p className="text-sm text-muted-foreground">{isGoalkeeper ? "Goles e/c" : "Goles"}</p>
           </div>
           <p className="text-2xl font-bold">{stats.goals}</p>
         </CardContent>

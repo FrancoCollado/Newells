@@ -33,7 +33,14 @@ export default function AddMatchPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedPlayers, setSelectedPlayers] = useState<
-    { playerId: string; playerName: string; minutesPlayed: number; wasInjured: boolean; goals: number }[]
+    {
+      playerId: string
+      playerName: string
+      minutesPlayed: number
+      wasInjured: boolean
+      goals: number
+      goalsAgainst: number
+    }[]
   >([])
   const [leagueType, setLeagueType] = useState<LeagueType>("AFA")
 
@@ -64,7 +71,14 @@ export default function AddMatchPage() {
     } else {
       setSelectedPlayers([
         ...selectedPlayers,
-        { playerId: player.id, playerName: player.name, minutesPlayed: 0, wasInjured: false, goals: 0 },
+        {
+          playerId: player.id,
+          playerName: player.name,
+          minutesPlayed: 0,
+          wasInjured: false,
+          goals: 0,
+          goalsAgainst: 0,
+        },
       ])
     }
   }
@@ -85,6 +99,14 @@ export default function AddMatchPage() {
 
   const handleInjuryToggle = (playerId: string) => {
     setSelectedPlayers(selectedPlayers.map((p) => (p.playerId === playerId ? { ...p, wasInjured: !p.wasInjured } : p)))
+  }
+
+  const handleGoalsAgainstChange = (playerId: string, goalsAgainst: string) => {
+    setSelectedPlayers(
+      selectedPlayers.map((p) =>
+        p.playerId === playerId ? { ...p, goalsAgainst: Number.parseInt(goalsAgainst) || 0 } : p,
+      ),
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

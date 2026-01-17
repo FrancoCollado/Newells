@@ -14,11 +14,14 @@ export type Permission =
   | "create_nutrition_report" // Crear informes nutricionales
   | "create_physio_report" // Crear informes de fisioterapia
   | "create_technical_report" // Crear informes técnicos
+  | "create_psicosocial_report" // Nuevo permiso para informes psicosociales
   | "edit_medical_area" // Editar área médica (eventos, informes generales)
   | "edit_psych_area" // Editar área psicológica
   | "edit_nutrition_area" // Editar área nutricional
   | "edit_physio_area" // Editar área de fisioterapia
   | "edit_training_area" // Editar área de entrenamiento
+  | "edit_goalkeepers_area" // Nuevo permiso para área arqueros
+  | "edit_psicosocial_area" // Nuevo permiso para editar área psicosocial
   | "access_manager_panel" // Entrar a /manager
   | "edit_player_physical_data" // Nuevo permiso para editar datos físicos del jugador
   | "view_medical_records" // Nuevo permiso para ver fichas médicas
@@ -42,11 +45,14 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "create_nutrition_report",
     "create_physio_report",
     "create_technical_report",
+    "create_psicosocial_report", // Nuevo permiso para informes psicosociales
     "edit_medical_area",
     "edit_psych_area",
     "edit_nutrition_area",
     "edit_physio_area",
     "edit_training_area",
+    "edit_goalkeepers_area", // Nuevo permiso para área arqueros
+    "edit_psicosocial_area", // Nuevo permiso para editar área psicosocial
     "access_manager_panel",
     "edit_player_physical_data",
     "view_medical_records", // Dirigente puede ver fichas médicas
@@ -123,6 +129,30 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "view_injured_players", // Kinesiólogo puede ver lesionados
     "manage_injury_evolutions", // Kinesiólogo puede gestionar evoluciones
   ],
+
+  // ENTRENADOR_ARQUEROS - Agregar entrenador_arqueros con los mismos permisos que entrenador
+  entrenador_arqueros: [
+    "view_reports",
+    "view_all_data",
+    "view_all_areas",
+    "view_indices",
+    "manage_matches",
+    "manage_trainings",
+    "create_technical_report",
+    "edit_training_area",
+    "edit_goalkeepers_area", // Nuevo permiso para área arqueros
+    "view_injured_players",
+  ],
+
+  // PSICOSOCIAL - Nuevo rol con permisos similares a otros profesionales
+  psicosocial: [
+    "create_psicosocial_report",
+    "edit_psicosocial_area",
+    "view_reports",
+    "view_all_areas",
+    "view_indices",
+    "view_injured_players",
+  ],
 }
 
 // ADMINISTRADOR was missing from UserRole type, so we'll handle it separately
@@ -160,6 +190,8 @@ export function canCreateReport(role: ExtendedUserRole, reportType: UserRole | "
   if (role === "nutricionista" && reportType === "nutricionista") return true
   if (role === "fisioterapeuta" && reportType === "fisioterapeuta") return true
   if (role === "kinesiologo" && reportType === "kinesiologo") return true
+  if (role === "entrenador_arqueros" && reportType === "entrenador_arqueros") return true
+  if (role === "psicosocial" && reportType === "psicosocial") return true
 
   return false
 }
@@ -179,6 +211,8 @@ export function canEditArea(role: ExtendedUserRole, area: string): boolean {
     nutricional: "edit_nutrition_area",
     entrenamiento: "edit_training_area",
     fisioterapia: "edit_physio_area",
+    arqueros: "edit_goalkeepers_area", // Nuevo mapeo para área arqueros
+    psicosocial: "edit_psicosocial_area", // Nuevo mapeo para área psicosocial
   }
 
   const requiredPermission = areaPermissionMap[area]
@@ -205,4 +239,8 @@ export function canViewInjuredPlayers(role: ExtendedUserRole): boolean {
 
 export function canManageInjuryEvolutions(role: ExtendedUserRole): boolean {
   return hasPermission(role, "manage_injury_evolutions")
+}
+
+export function canViewPsychosocialData(role: ExtendedUserRole): boolean {
+  return role === "psicosocial" || role === "dirigente"
 }

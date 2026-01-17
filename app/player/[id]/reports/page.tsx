@@ -108,7 +108,8 @@ export default function PlayerReportsPage() {
     user.role === "nutricionista" ||
     user.role === "kinesiologo" ||
     user.role === "fisioterapeuta" ||
-    user.role === "psicologo"
+    user.role === "psicologo" ||
+    user.role === "psicosocial"
 
   return (
     <AuthGuard>
@@ -162,6 +163,7 @@ export default function PlayerReportsPage() {
                     <TabsTrigger value="entrenador">Entrenamiento</TabsTrigger>
                     <TabsTrigger value="nutricionista">Nutrición</TabsTrigger>
                     <TabsTrigger value="fisioterapeuta">Fisioterapia</TabsTrigger>
+                    <TabsTrigger value="psicosocial">Psicosocial</TabsTrigger>
                   </TabsList>
 
                   <div className="space-y-4 mt-4">

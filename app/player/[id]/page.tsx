@@ -38,8 +38,9 @@ import {
   ClipboardList,
   RefreshCw,
   Stethoscope,
+  Users,
 } from "lucide-react"
-import { hasPermission } from "@/lib/rbac" // Importar función para verificar permisos
+import { hasPermission, canViewPsychosocialData } from "@/lib/rbac" // Importar función para verificar permisos
 
 export default function PlayerDetailPage() {
   const router = useRouter()
@@ -295,6 +296,7 @@ export default function PlayerDetailPage() {
   const canViewObservations = user.role === "dirigente" || user.role === "entrenador" || user.role === "administrador"
   const hasObservations = player.observations && player.observations.trim().length > 0
   const canViewMedicalRecord = hasPermission(user.role, "view_medical_records")
+  const canViewPsychosocial = canViewPsychosocialData(user.role)
 
   return (
     <AuthGuard>
@@ -378,6 +380,16 @@ export default function PlayerDetailPage() {
                     >
                       <Activity className="h-4 w-4 mr-2" />
                       Lesiones y enfermedades
+                    </Button>
+                  )}
+
+                  {canViewPsychosocial && (
+                    <Button
+                      onClick={() => router.push(`/player/${player.id}/psychosocial-data`)}
+                      className="mt-3 w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Datos Psicosociales
                     </Button>
                   )}
 

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentUser, logout, getRoleLabel, type User } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
@@ -8,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { PlayersList } from "@/components/players-list"
 import type { Division, LeagueType } from "@/lib/players"
+import { Input } from "@/components/ui/input"
 import {
   LogOut,
   Users,
@@ -21,6 +24,7 @@ import {
   Loader2,
   BarChart3,
   Stethoscope,
+  Upload,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -42,6 +46,11 @@ export default function DashboardPage() {
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [showTrainingModal, setShowTrainingModal] = useState(false)
   const [trainingDescription, setTrainingDescription] = useState("")
+  const [trainingLink, setTrainingLink] = useState("")
+  const [trainingAttachments, setTrainingAttachments] = useState<
+    Array<{ id: string; name: string; type: string; url: string }>
+  >([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [trainings, setTrainings] = useState<Training[]>([])
   const [showTrainingsList, setShowTrainingsList] = useState(false)
   const [matches, setMatches] = useState<Match[]>([])
@@ -140,6 +149,33 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
+  const handleTrainingFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const newAttachment = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          url: event.target?.result as string,
+        }
+        setTrainingAttachments((prev) => [...prev, newAttachment])
+      }
+      reader.readAsDataURL(file)
+    })
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const removeTrainingAttachment = (id: string) => {
+    setTrainingAttachments((prev) => prev.filter((a) => a.id !== id))
+  }
+
   const handleSaveTraining = async () => {
     if (!trainingDescription.trim()) {
       toast({
@@ -164,11 +200,15 @@ export default function DashboardPage() {
         date: localDate,
         description: trainingDescription,
         createdBy: user.name,
+        link: trainingLink || undefined,
+        attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
       }
 
       await saveTraining(training)
       setTrainings([training, ...trainings])
       setTrainingDescription("")
+      setTrainingLink("")
+      setTrainingAttachments([])
       setShowTrainingModal(false)
 
       toast({
@@ -555,6 +595,8 @@ export default function DashboardPage() {
                   onClick={() => {
                     setShowTrainingModal(false)
                     setTrainingDescription("")
+                    setTrainingLink("")
+                    setTrainingAttachments([])
                   }}
                   className="text-white hover:bg-white/20"
                 >
@@ -583,12 +625,72 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted-foreground mt-2">{trainingDescription.length} caracteres</p>
                 </div>
 
+                <div>
+                  <Label htmlFor="training-link" className="text-base font-semibold">
+                    Hipervínculo (Opcional)
+                  </Label>
+                  <Input
+                    id="training-link"
+                    type="url"
+                    placeholder="https://ejemplo.com/video-entrenamiento"
+                    value={trainingLink}
+                    onChange={(e) => setTrainingLink(e.target.value)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Enlace a videos, planillas u otros recursos</p>
+                </div>
+
+                <div>
+                  <Label className="text-base font-semibold">Archivos Adjuntos (Opcional)</Label>
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors mt-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleTrainingFileChange}
+                      multiple
+                      className="hidden"
+                      id="training-file-upload"
+                    />
+                    <label htmlFor="training-file-upload" className="cursor-pointer">
+                      <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-medium mb-1">Haga clic para adjuntar archivos</p>
+                      <p className="text-xs text-muted-foreground">PDF, imágenes, documentos</p>
+                    </label>
+                  </div>
+
+                  {trainingAttachments.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      <p className="text-xs font-medium">Archivos seleccionados ({trainingAttachments.length})</p>
+                      {trainingAttachments.map((file) => (
+                        <div
+                          key={file.id}
+                          className="flex items-center gap-2 p-2 bg-background rounded group hover:bg-muted/80 transition-colors"
+                        >
+                          <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs flex-1 truncate">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTrainingAttachment(file.id)}
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setShowTrainingModal(false)
                       setTrainingDescription("")
+                      setTrainingLink("")
+                      setTrainingAttachments([])
                     }}
                   >
                     Cancelar

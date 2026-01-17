@@ -7,13 +7,17 @@ export interface Training {
   date: string
   description: string
   createdBy: string
+  link?: string
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+    type: string
+  }>
 }
 
 export async function getTrainings(): Promise<Training[]> {
-  const { data, error } = await supabase
-    .from("trainings")
-    .select("*")
-    .order("date", { ascending: false })
+  const { data, error } = await supabase.from("trainings").select("*").order("date", { ascending: false })
 
   if (error) {
     console.error("Error fetching trainings:", error)
@@ -43,14 +47,14 @@ export async function getTrainingsByDivision(division: Division, page = 0, limit
 }
 
 export async function saveTraining(training: Training): Promise<void> {
-  const { error } = await supabase
-    .from("trainings")
-    .insert({
-      division: training.division,
-      date: training.date,
-      description: training.description,
-      created_by: training.createdBy,
-    })
+  const { error } = await supabase.from("trainings").insert({
+    division: training.division,
+    date: training.date,
+    description: training.description,
+    created_by: training.createdBy,
+    link: training.link,
+    attachments: training.attachments || [],
+  })
 
   if (error) {
     console.error("Error saving training:", error)
@@ -71,5 +75,7 @@ function mapDatabaseTrainingToAppTraining(dbTraining: any): Training {
     date: dbTraining.date,
     description: dbTraining.description,
     createdBy: dbTraining.created_by,
+    link: dbTraining.link,
+    attachments: dbTraining.attachments || [],
   }
 }

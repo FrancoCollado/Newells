@@ -265,11 +265,13 @@ export default function AreasPage() {
   if (!user) return null
 
   const areas = [
-    { id: "medica", label: "Área Médica", icon: HeartPulse, color: "text-red-600" },
-    { id: "psicologica", label: "Área Psicológica", icon: Brain, color: "text-purple-600" },
-    { id: "nutricional", label: "Área Nutricional", icon: Utensils, color: "text-green-600" },
-    { id: "entrenamiento", label: "Área de Entrenamiento", icon: Dumbbell, color: "text-blue-600" },
-    { id: "fisioterapia", label: "Área de Fisioterapia", icon: Sparkles, color: "text-orange-600" },
+    { id: "medica", label: "Médica", icon: HeartPulse, color: "text-red-600" },
+    { id: "psicologica", label: "Psicológica", icon: Brain, color: "text-purple-600" },
+    { id: "nutricional", label: "Nutricional", icon: Utensils, color: "text-green-600" },
+    { id: "entrenamiento", label: "Entrenamiento", icon: Dumbbell, color: "text-blue-600" },
+    { id: "fisioterapia", label: "Fisioterapia", icon: Sparkles, color: "text-orange-600" },
+    { id: "arqueros", label: "Arqueros", icon: Dumbbell, color: "text-cyan-600" },
+    { id: "psicosocial", label: "Psicosocial", icon: Brain, color: "text-pink-600" },
   ]
 
   const areaReports = reports
@@ -317,12 +319,11 @@ export default function AreasPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {areas.map((area) => (
               <TabsTrigger key={area.id} value={area.id} className="flex items-center gap-2">
                 <area.icon className={`h-4 w-4 ${area.color}`} />
-                <span className="hidden md:inline">{area.label}</span>
-                <span className="md:hidden">{area.label.replace("Área de ", "").replace("Área ", "")}</span>
+                <span className="text-sm">{area.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>

@@ -7,6 +7,7 @@ export interface MatchPlayer {
   minutesPlayed: number
   wasInjured: boolean
   goals: number
+  goalsAgainst?: number
 }
 
 export interface Match {
@@ -76,6 +77,7 @@ function mapDatabaseMatchToAppMatch(dbMatch: any): Match {
       minutesPlayed: mp.minutes_played,
       wasInjured: mp.was_injured,
       goals: mp.goals,
+      goalsAgainst: mp.goals_against || 0,
     })),
   }
 }
@@ -118,6 +120,7 @@ export async function saveMatch(match: Match): Promise<void> {
     minutes_played: p.minutesPlayed,
     was_injured: p.wasInjured,
     goals: p.goals,
+    goals_against: p.goalsAgainst || 0,
   }))
 
   const { error: playersError } = await supabase.from("match_players").insert(matchPlayersToInsert)
