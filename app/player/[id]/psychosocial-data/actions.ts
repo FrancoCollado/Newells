@@ -1,7 +1,7 @@
 "use server"
 
 import { cookies } from "next/headers"
-import { createSupabaseServerClient } from "@supabase/ssr"
+import { createServerClient } from "@supabase/ssr"
 import {
   type PsychosocialCategory,
   getEvolutionsByPlayerId,
