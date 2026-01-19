@@ -218,7 +218,7 @@ export default function DashboardPage() {
           division: selectedDivision,
           date: localDate,
           description: trainingDescription,
-          createdBy: user.id,
+          createdBy: user.name,
           link: trainingLink || undefined,
           attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
         })
@@ -570,7 +570,7 @@ export default function DashboardPage() {
                             </span>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">Por: {training.createdBy}</span>
-                              {user && user.id === training.createdBy && (
+                              {user && user.name === training.createdBy && (
                                 <div className="flex gap-1">
                                   <Button
                                     variant="ghost"
@@ -615,6 +615,38 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <p className="text-sm whitespace-pre-wrap">{training.description}</p>
+                          
+                          {training.link && (
+                            <div className="mt-2">
+                              <a
+                                href={training.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+                              >
+                                🔗 Ver enlace
+                              </a>
+                            </div>
+                          )}
+
+                          {training.attachments && training.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t">
+                              <p className="text-xs font-medium text-gray-700 mb-2">Archivos adjuntos:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {training.attachments.map((attachment) => (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachment.url}
+                                    download={attachment.name}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300 transition-colors"
+                                  >
+                                    <span>📎</span>
+                                    <span className="max-w-[150px] truncate">{attachment.name}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

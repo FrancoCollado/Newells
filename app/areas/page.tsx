@@ -617,16 +617,35 @@ export default function AreasPage() {
                                   Archivos adjuntos ({report.attachments.length}):
                                 </p>
                                 {report.attachments.map((attachment) => (
-                                  <a
-                                    key={attachment.id}
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors text-xs"
-                                  >
+                                  <button
+                                      key={attachment.id}
+                                      onClick={() => {
+                                        const byteString = atob(attachment.url.split(",")[1])
+                                        const mimeString = attachment.url.split(",")[0].split(":")[1].split(";")[0]
+
+                                        const ab = new ArrayBuffer(byteString.length)
+                                        const ia = new Uint8Array(ab)
+
+                                        for (let i = 0; i < byteString.length; i++) {
+                                          ia[i] = byteString.charCodeAt(i)
+                                        }
+
+                                        const blob = new Blob([ab], { type: mimeString })
+                                        const url = URL.createObjectURL(blob)
+
+                                        const a = document.createElement("a")
+                                        a.href = url
+                                        a.download = attachment.name
+                                        document.body.appendChild(a)
+                                        a.click()
+                                        document.body.removeChild(a)
+                                        URL.revokeObjectURL(url)
+                                      }}
+                                      className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors text-xs w-full text-left"
+                                      >
                                     <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                     <span className="flex-1 truncate">{attachment.name}</span>
-                                  </a>
+                                  </button>     
                                 ))}
                               </div>
                             )}
