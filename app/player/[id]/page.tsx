@@ -24,6 +24,9 @@ import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
 import { PlayerObservationsDialog } from "@/components/player-observations-dialog"
 import { PlayerLeagueStatsTabs } from "@/components/player-league-stats-tabs"
+import { OdontogramaUploader } from "@/components/odontograma-uploader"
+import { type Odontograma } from "@/lib/odontogramas"
+import { fetchOdontogramaForPlayer } from "@/app/player/[id]/odontograma/actions"
 import {
   ArrowLeft,
   UserIcon,
@@ -41,6 +44,10 @@ import {
   Users,
 } from "lucide-react"
 import { hasPermission, canViewPsychosocialData } from "@/lib/rbac" // Importar función para verificar permisos
+import { getOdontogramaByPlayerId } from "@/lib/odontogramas" // Importar función para obtener odontograma
+
+// Declare the getOdontogramaAction variable
+const getOdontogramaAction = getOdontogramaByPlayerId
 
 export default function PlayerDetailPage() {
   const router = useRouter()
@@ -62,14 +69,17 @@ export default function PlayerDetailPage() {
   const [showExtendedData, setShowExtendedData] = useState(false)
   const [showObservations, setShowObservations] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [odontograma, setOdontograma] = useState<Odontograma | null>(null)
+  const [showOdontograma, setShowOdontograma] = useState(false)
 
   const loadPlayerData = async (playerId: string) => {
     console.log("[v0] Loading player data for ID:", playerId)
 
-    const [currentUser, foundPlayer, allReports] = await Promise.all([
+    const [currentUser, foundPlayer, allReports, odontogramaData] = await Promise.all([
       getCurrentUser(),
       getPlayerById(playerId),
       getReportsByPlayerId(playerId),
+      fetchOdontogramaForPlayer(playerId),
     ])
 
     if (currentUser) {
@@ -95,6 +105,8 @@ export default function PlayerDetailPage() {
       const sortedReports = allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       setRecentReports(sortedReports.slice(0, 5))
     }
+
+    setOdontograma(odontogramaData)
   }
 
   useEffect(() => {
@@ -298,6 +310,8 @@ export default function PlayerDetailPage() {
   const hasObservations = player.observations && player.observations.trim().length > 0
   const canViewMedicalRecord = hasPermission(user.role, "view_medical_records")
   const canViewPsychosocial = canViewPsychosocialData(user.role)
+  const canViewOdontograma = user.role === "dirigente" || user.role === "odontologo"
+  const canUploadOdontograma = user.role === "dirigente" || user.role === "odontologo"
 
   return (
     <AuthGuard>
@@ -417,6 +431,20 @@ export default function PlayerDetailPage() {
                     >
                       <ClipboardList className="h-4 w-4 mr-2" />
                       Detalles
+                    </Button>
+                  )}
+
+                  {canViewOdontograma && (
+                    <Button
+                      onClick={() => setShowOdontograma(true)}
+                      className={`mt-3 w-full ${
+                        odontograma
+                          ? "bg-teal-600 hover:bg-teal-700"
+                          : "bg-teal-500 hover:bg-teal-600"
+                      }`}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Odontograma
                     </Button>
                   )}
                 </div>
@@ -613,7 +641,11 @@ export default function PlayerDetailPage() {
           <PlayerIndicesManager
             playerId={player.id}
             playerName={player.name}
+            userRole={user.role}
             onClose={() => setShowIndicesModal(false)}
+            onSave={async () => {
+              await loadPlayerData(player.id)
+            }}
           />
         )}
 
@@ -634,9 +666,38 @@ export default function PlayerDetailPage() {
             player={player}
             open={showObservations}
             onOpenChange={setShowObservations}
-            onUpdate={handleUpdateObservations}
+            onUpdate={(observations) => {
+              setPlayer({ ...player, observations })
+            }}
             readOnly={false}
           />
+        )}
+
+        {showOdontograma && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">Odontograma</h2>
+                  <Button variant="ghost" size="sm" onClick={() => setShowOdontograma(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <OdontogramaUploader
+                  playerId={player.id}
+                  playerName={player.name}
+                  existingOdontograma={odontograma}
+                  canUpload={canUploadOdontograma}
+                  onUploadSuccess={async () => {
+                    await loadPlayerData(player.id)
+                  }}
+                  onDeleteSuccess={async () => {
+                    await loadPlayerData(player.id)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </AuthGuard>
