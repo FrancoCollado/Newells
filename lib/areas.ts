@@ -50,12 +50,53 @@ export async function getAreaReports(area: string, page = 0, limit = 10): Promis
   }))
 }
 
-export async function saveAreaReport(report: Omit<AreaReport, "id" | "date">): Promise<AreaReport | null> {
+export async function saveAreaReport(report: {
+  id?: string
+  area: string
+  title: string
+  content: string
+  createdBy?: string
+  attachments?: Array<{
+    id: string
+    name: string
+    url: string
+    type: string
+  }>
+}): Promise<AreaReport | null> {
+  // 🔄 EDITAR INFORME
+  if (report.id) {
+    const { data, error } = await supabase
+      .from("area_reports")
+      .update({
+        title: report.title,
+        content: report.content,
+        attachments: report.attachments,
+      })
+      .eq("id", report.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating area report:", error)
+      return null
+    }
+
+    return {
+      id: data.id,
+      area: data.area,
+      date: data.date,
+      title: data.title,
+      content: data.content,
+      createdBy: data.created_by,
+      attachments: data.attachments || [],
+    }
+  }
+
+  // 🆕 CREAR INFORME
   const { data, error } = await supabase
     .from("area_reports")
     .insert({
       area: report.area,
-      date: new Date().toISOString(),
       title: report.title,
       content: report.content,
       created_by: report.createdBy,
@@ -65,7 +106,7 @@ export async function saveAreaReport(report: Omit<AreaReport, "id" | "date">): P
     .single()
 
   if (error) {
-    console.error("Error saving area report:", error)
+    console.error("Error creating area report:", error)
     return null
   }
 
@@ -79,6 +120,7 @@ export async function saveAreaReport(report: Omit<AreaReport, "id" | "date">): P
     attachments: data.attachments || [],
   }
 }
+
 
 export async function deleteAreaReport(id: string): Promise<void> {
   const { error } = await supabase.from("area_reports").delete().eq("id", id)

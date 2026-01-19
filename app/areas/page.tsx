@@ -73,6 +73,7 @@ export default function AreasPage() {
   const [newEventDescription, setNewEventDescription] = useState("")
   const [showNewReportForm, setShowNewReportForm] = useState(false)
   const [showNewEventForm, setShowNewEventForm] = useState(false)
+  const [editingReport, setEditingReport] = useState<AreaReport | null>(null)
   const [newReportAttachments, setNewReportAttachments] = useState<
     Array<{
       id: string
@@ -118,15 +119,31 @@ export default function AreasPage() {
   }
 
   const handleSaveReport = async () => {
-    if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
+  if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
+  if (!canEditArea(user.role, selectedArea)) return
 
-    if (!canEditArea(user.role, selectedArea)) {
-      return // Silently fail - UI should prevent this
+  setActionLoading(true)
+
+  let savedReport: AreaReport | null = null
+
+  if (editingReport) {
+    // 🔄 EDITAR INFORME
+    savedReport = await saveAreaReport({
+      id: editingReport.id,
+      area: selectedArea,
+      title: newReportTitle,
+      content: newReportContent,
+      attachments: newReportAttachments,
+    })
+
+    if (savedReport) {
+      setReports((prev) =>
+        prev.map((r) => (r.id === editingReport.id ? savedReport! : r))
+      )
     }
-
-    setActionLoading(true)
-
-    const newReport = await saveAreaReport({
+  } else {
+    // 🆕 CREAR INFORME
+    savedReport = await saveAreaReport({
       area: selectedArea,
       title: newReportTitle,
       content: newReportContent,
@@ -134,15 +151,20 @@ export default function AreasPage() {
       attachments: newReportAttachments,
     })
 
-    if (newReport) {
-      setReports([newReport, ...reports])
-      setNewReportTitle("")
-      setNewReportContent("")
-      setNewReportAttachments([])
-      setShowNewReportForm(false)
+    if (savedReport) {
+      setReports([savedReport, ...reports])
     }
-    setActionLoading(false)
   }
+
+  // Reset formulario
+  setNewReportTitle("")
+  setNewReportContent("")
+  setNewReportAttachments([])
+  setEditingReport(null)
+  setShowNewReportForm(false)
+  setActionLoading(false)
+}
+
 
   const handleSaveEvent = async () => {
     if (!newEventTitle.trim() || !selectedDate || !user) return
@@ -558,15 +580,35 @@ export default function AreasPage() {
                                 </p>
                               </div>
                               {canEdit && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setItemToDelete({ id: report.id, type: "report" })}
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  {/* ✏️ EDITAR */}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingReport(report)
+                                      setNewReportTitle(report.title)
+                                      setNewReportContent(report.content)
+                                      setNewReportAttachments(report.attachments || [])
+                                      setShowNewReportForm(true)
+                                    }}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    ✏️
+                                  </Button>
+
+                                  {/* 🗑️ BORRAR */}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setItemToDelete({ id: report.id, type: "report" })}
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               )}
+
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.content}</p>
                             {report.attachments && report.attachments.length > 0 && (
