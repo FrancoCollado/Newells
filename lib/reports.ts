@@ -50,7 +50,9 @@ export async function getReportsByPlayer(playerId: string, page = 0, limit = 10)
   return data.map(mapDatabaseReportToAppReport)
 }
 
-export { getReportsByPlayer as getReportsByPlayerId }
+export async function getReportsByPlayerId(playerId: string, page = 0, limit = 10): Promise<Report[]> {
+  return getReportsByPlayer(playerId, page, limit)
+}
 
 export async function getReportsByPlayerAndRole(playerId: string, role: UserRole, page = 0, limit = 10): Promise<Report[]> {
   const from = page * limit
@@ -79,7 +81,7 @@ export async function addReport(report: Omit<Report, "id" | "date">): Promise<Re
     professional_name: report.professionalName,
     professional_role: report.professionalRole,
     content: report.content,
-    attachments: report.attachments, // Supabase handles JSONB
+    attachments: report.attachments,
   }
 
   const { data, error } = await supabase
@@ -96,6 +98,30 @@ export async function addReport(report: Omit<Report, "id" | "date">): Promise<Re
   return mapDatabaseReportToAppReport(data)
 }
 
+export async function updateReport(report: Report): Promise<void> {
+  const { error } = await supabase
+    .from("reports")
+    .update({
+      content: report.content,
+      attachments: report.attachments,
+    })
+    .eq("id", report.id)
+
+  if (error) {
+    console.error("Error updating report:", error)
+    throw new Error("Error updating report")
+  }
+}
+
+export async function deleteReport(reportId: string): Promise<void> {
+  const { error } = await supabase.from("reports").delete().eq("id", reportId)
+
+  if (error) {
+    console.error("Error deleting report:", error)
+    throw new Error("Error deleting report")
+  }
+}
+
 function mapDatabaseReportToAppReport(dbReport: any): Report {
   return {
     id: dbReport.id,
@@ -103,7 +129,7 @@ function mapDatabaseReportToAppReport(dbReport: any): Report {
     professionalId: dbReport.professional_id,
     professionalName: dbReport.professional_name,
     professionalRole: dbReport.professional_role,
-    date: dbReport.created_at || dbReport.date, // Use created_at if date is null, though schema says date is timestamp
+    date: dbReport.created_at || dbReport.date,
     content: dbReport.content,
     attachments: dbReport.attachments || [],
   }

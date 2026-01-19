@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useToast } from "@/components/ui/use-toast"
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -29,9 +30,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { saveTraining, generateTrainingId, getTrainingsByDivision, type Training } from "@/lib/trainings"
+import { saveTraining, getTrainingsByDivision, updateTraining, deleteTraining, type Training } from "@/lib/trainings"
 import { getMatchesByDivision, type Match } from "@/lib/matches"
-import { useToast } from "@/hooks/use-toast"
 import { getDivisionLabel, getPlayers } from "@/lib/players"
 import { hasPermission } from "@/lib/rbac"
 import { IndicesManager } from "@/components/indices-manager"
@@ -67,6 +67,8 @@ export default function DashboardPage() {
   const [loadingMoreTrainings, setLoadingMoreTrainings] = useState(false)
 
   const [showIndicesModal, setShowIndicesModal] = useState(false)
+  const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
+  const [editingTrainingData, setEditingTrainingData] = useState<Training | null>(null)
 
   const ITEMS_PER_PAGE = 5
 
@@ -191,34 +193,54 @@ export default function DashboardPage() {
     setSavingTraining(true)
 
     try {
-      const today = new Date()
-      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split("T")[0]
+      if (editingTrainingId && editingTrainingData) {
+        // Modo edición
+        const updatedTraining: Training = {
+          ...editingTrainingData,
+          description: trainingDescription,
+          link: trainingLink || undefined,
+          attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
+        }
 
-      const training: Training = {
-        id: generateTrainingId(),
-        division: selectedDivision,
-        date: localDate,
-        description: trainingDescription,
-        createdBy: user.name,
-        link: trainingLink || undefined,
-        attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
+        await updateTraining(updatedTraining)
+        setTrainings(trainings.map((t) => (t.id === editingTrainingId ? updatedTraining : t)))
+
+        toast({
+          title: "Entrenamiento actualizado",
+          description: "El entrenamiento ha sido actualizado exitosamente",
+        })
+      } else {
+        // Modo crear
+        const today = new Date()
+        const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split("T")[0]
+
+        const newTraining = await saveTraining({
+          division: selectedDivision,
+          date: localDate,
+          description: trainingDescription,
+          createdBy: user.id,
+          link: trainingLink || undefined,
+          attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
+        })
+
+        setTrainings([newTraining, ...trainings])
+
+        toast({
+          title: "Entrenamiento guardado",
+          description: "El entrenamiento ha sido registrado exitosamente",
+        })
       }
 
-      await saveTraining(training)
-      setTrainings([training, ...trainings])
       setTrainingDescription("")
       setTrainingLink("")
       setTrainingAttachments([])
       setShowTrainingModal(false)
-
-      toast({
-        title: "Entrenamiento guardado",
-        description: "El entrenamiento ha sido registrado exitosamente",
-      })
+      setEditingTrainingId(null)
+      setEditingTrainingData(null)
     } catch (e) {
       toast({
         title: "Error",
-        description: "No se pudo guardar el entrenamiento",
+        description: editingTrainingId ? "No se pudo actualizar el entrenamiento" : "No se pudo guardar el entrenamiento",
         variant: "destructive",
       })
     } finally {
@@ -390,7 +412,7 @@ export default function DashboardPage() {
                         onClick={() => setShowIndicesModal(true)}
                         variant="outline"
                         size="sm"
-                        className="border-red-700 text-red-700 hover:bg-red-50"
+                        className="border-red-700 text-red-700 hover:bg-red-50 mb-4"
                       >
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Índices
@@ -546,144 +568,125 @@ export default function DashboardPage() {
                                 })
                               })()}
                             </span>
-                            <span className="text-xs text-muted-foreground">Por: {training.createdBy}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Por: {training.createdBy}</span>
+                              {user && user.id === training.createdBy && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingTrainingId(training.id)
+                                      setEditingTrainingData(training)
+                                      setTrainingDescription(training.description)
+                                      setTrainingLink(training.link || "")
+                                      setTrainingAttachments(training.attachments || [])
+                                      setShowTrainingModal(true)
+                                    }}
+                                    className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50"
+                                  >
+                                    ✏️
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await deleteTraining(training.id)
+                                        setTrainings(trainings.filter((t) => t.id !== training.id))
+                                        toast({
+                                          title: "Éxito",
+                                          description: "Entrenamiento eliminado",
+                                        })
+                                      } catch (error) {
+                                        toast({
+                                          title: "Error",
+                                          description: "No se pudo eliminar el entrenamiento",
+                                          variant: "destructive",
+                                        })
+                                      }
+                                    }}
+                                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                  >
+                                    🗑️
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <p className="text-sm whitespace-pre-wrap">{training.description}</p>
                         </div>
                       ))}
-                      {hasMoreTrainings && (
-                        <div className="text-center pt-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleLoadMoreTrainings}
-                            disabled={loadingMoreTrainings}
-                            className="text-red-700 hover:bg-red-50"
-                          >
-                            {loadingMoreTrainings ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Cargar más entrenamientos"
-                            )}
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            <PlayersList
-              division={selectedDivision === "all" ? undefined : selectedDivision}
-              userRole={user.role}
-              leagueType={selectedLeagueType === "all" ? undefined : selectedLeagueType}
-            />
-          </CardContent>
-        </Card>
-      </main>
-
-      {showTrainingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white">
-              <div className="flex items-center justify-between">
-                <CardTitle>Registrar Entrenamiento</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowTrainingModal(false)
-                    setTrainingDescription("")
-                    setTrainingLink("")
-                    setTrainingAttachments([])
-                  }}
-                  className="text-white hover:bg-white/20"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <CardDescription className="text-red-100">
-                División: {selectedDivision !== "all" && getDivisionLabel(selectedDivision)} | Fecha:{" "}
-                {new Date().toLocaleDateString("es-AR")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="training-description" className="text-base font-semibold">
-                    Descripción del Entrenamiento
-                  </Label>
-                  <Textarea
-                    id="training-description"
-                    placeholder="Describe el entrenamiento realizado, ejercicios, objetivos trabajados, observaciones importantes..."
-                    value={trainingDescription}
-                    onChange={(e) => setTrainingDescription(e.target.value)}
-                    rows={8}
-                    className="mt-2 resize-none"
-                  />
-                  <p className="text-sm text-muted-foreground mt-2">{trainingDescription.length} caracteres</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="training-link" className="text-base font-semibold">
-                    Hipervínculo (Opcional)
-                  </Label>
-                  <Input
-                    id="training-link"
-                    type="url"
-                    placeholder="https://ejemplo.com/video-entrenamiento"
-                    value={trainingLink}
-                    onChange={(e) => setTrainingLink(e.target.value)}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Enlace a videos, planillas u otros recursos</p>
-                </div>
-
-                <div>
-                  <Label className="text-base font-semibold">Archivos Adjuntos (Opcional)</Label>
-                  <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors mt-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={handleTrainingFileChange}
-                      multiple
-                      className="hidden"
-                      id="training-file-upload"
+            {showTrainingModal && (
+              <div className="border-t mt-4 pt-4">
+                <h3 className="font-semibold mb-4">
+                  {editingTrainingId ? "Editar Entrenamiento" : "Nuevo Entrenamiento"}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Descripción *</label>
+                    <textarea
+                      value={trainingDescription}
+                      onChange={(e) => setTrainingDescription(e.target.value)}
+                      placeholder="Describe el entrenamiento realizado..."
+                      className="w-full min-h-[120px] p-3 border rounded-md resize-y focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
-                    <label htmlFor="training-file-upload" className="cursor-pointer">
-                      <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-xs font-medium mb-1">Haga clic para adjuntar archivos</p>
-                      <p className="text-xs text-muted-foreground">PDF, imágenes, documentos</p>
-                    </label>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Link (opcional)</label>
+                    <input
+                      type="url"
+                      value={trainingLink}
+                      onChange={(e) => setTrainingLink(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full p-2.5 border rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
                   </div>
 
-                  {trainingAttachments.length > 0 && (
-                    <div className="space-y-2 mt-2">
-                      <p className="text-xs font-medium">Archivos seleccionados ({trainingAttachments.length})</p>
-                      {trainingAttachments.map((file) => (
-                        <div
-                          key={file.id}
-                          className="flex items-center gap-2 p-2 bg-background rounded group hover:bg-muted/80 transition-colors"
-                        >
-                          <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-xs flex-1 truncate">{file.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeTrainingAttachment(file.id)}
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Archivos adjuntos (opcional)</label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || [])
+                        const attachments = files.map((file) => ({
+                          id: Math.random().toString(),
+                          name: file.name,
+                          url: URL.createObjectURL(file),
+                          type: file.type,
+                        }))
+                        setTrainingAttachments([...trainingAttachments, ...attachments])
+                      }}
+                      className="w-full p-2 border rounded-md file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                    />
+                    {trainingAttachments.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {trainingAttachments.map((attachment) => (
+                          <div key={attachment.id} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                            <span className="truncate">{attachment.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setTrainingAttachments(trainingAttachments.filter((a) => a.id !== attachment.id))}
+                              className="text-red-600 hover:text-red-800 ml-2"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex justify-end gap-3 pt-4">
+                
+                <div className="flex justify-end gap-3 pt-5 border-t mt-5">
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -691,6 +694,8 @@ export default function DashboardPage() {
                       setTrainingDescription("")
                       setTrainingLink("")
                       setTrainingAttachments([])
+                      setEditingTrainingId(null)
+                      setEditingTrainingData(null)
                     }}
                   >
                     Cancelar
@@ -701,14 +706,20 @@ export default function DashboardPage() {
                     disabled={savingTraining}
                   >
                     {savingTraining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {savingTraining ? "Guardando..." : "Guardar Entrenamiento"}
+                    {savingTraining ? "Guardando..." : editingTrainingId ? "Actualizar" : "Guardar"}
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            )}
+
+            <PlayersList 
+              division={selectedDivision === "all" ? "todas" : selectedDivision} 
+              userRole={user.role} 
+              leagueType={selectedLeagueType} 
+            />
+          </CardContent>
+        </Card>
+      </main>
 
       {showIndicesModal && selectedDivision !== "all" && user && (
         <IndicesManager

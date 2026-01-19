@@ -46,26 +46,49 @@ export async function getTrainingsByDivision(division: Division, page = 0, limit
   return data.map(mapDatabaseTrainingToAppTraining)
 }
 
-export async function saveTraining(training: Training): Promise<void> {
-  const { error } = await supabase.from("trainings").insert({
+export async function saveTraining(training: Omit<Training, 'id'>): Promise<Training> {
+  const { data, error } = await supabase.from("trainings").insert({
     division: training.division,
     date: training.date,
     description: training.description,
     created_by: training.createdBy,
     link: training.link,
     attachments: training.attachments || [],
-  })
+  }).select().single()
 
-  if (error) {
+  if (error || !data) {
     console.error("Error saving training:", error)
     throw new Error("Error saving training")
   }
+
+  return mapDatabaseTrainingToAppTraining(data)
 }
 
-export function generateTrainingId(): string {
-  // Not strictly needed if using UUIDs, but keeping for compatibility if any frontend logic relies on generating ID before save
-  // Though saveTraining above ignores the ID in the object and lets DB generate it.
-  return `training_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+export async function updateTraining(training: Training): Promise<void> {
+  const { error } = await supabase
+    .from("trainings")
+    .update({
+      division: training.division,
+      date: training.date,
+      description: training.description,
+      link: training.link,
+      attachments: training.attachments || [],
+    })
+    .eq("id", training.id)
+
+  if (error) {
+    console.error("Error updating training:", error)
+    throw new Error("Error updating training")
+  }
+}
+
+export async function deleteTraining(trainingId: string): Promise<void> {
+  const { error } = await supabase.from("trainings").delete().eq("id", trainingId)
+
+  if (error) {
+    console.error("Error deleting training:", error)
+    throw new Error("Error deleting training")
+  }
 }
 
 function mapDatabaseTrainingToAppTraining(dbTraining: any): Training {
@@ -78,4 +101,8 @@ function mapDatabaseTrainingToAppTraining(dbTraining: any): Training {
     link: dbTraining.link,
     attachments: dbTraining.attachments || [],
   }
+}
+
+export function generateTrainingId(): string {
+  return `training_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }

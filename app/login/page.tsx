@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { login } from "@/lib/auth"
-import { isSupabaseConfigured } from "@/lib/supabase"
+import { isSupabaseConfigured, supabase } from "@/lib/supabase"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -19,6 +19,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Limpiar tokens antiguos al cargar la página de login
+  useEffect(() => {
+    const cleanupOldTokens = async () => {
+      try {
+        // Limpiar la sesión de Supabase
+        await supabase.auth.signOut()
+        // Limpiar localStorage manualmente por si acaso
+        const keys = Object.keys(localStorage)
+        keys.forEach(key => {
+          if (key.includes('supabase')) {
+            localStorage.removeItem(key)
+          }
+        })
+        console.log("[v0] Tokens antiguos limpiados")
+      } catch (error) {
+        console.error("[v0] Error limpiando tokens:", error)
+      }
+    }
+    cleanupOldTokens()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -84,7 +84,15 @@ export async function getCurrentUser(): Promise<User | null> {
 
     const {
       data: { session },
+      error: sessionError,
     } = await supabase.auth.getSession()
+
+    // Si hay un error de sesión (como user_not_found), limpiar la sesión
+    if (sessionError) {
+      console.warn("[v0] Error de sesión, limpiando:", sessionError.message)
+      await supabase.auth.signOut()
+      return null
+    }
 
     if (!session?.user) {
       return null
@@ -98,13 +106,9 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (profileError) {
       console.error("[v0] Error obteniendo perfil:", profileError.message)
-      // Fallback a user_metadata
-      return {
-        id: session.user.id,
-        email: session.user.email!,
-        name: session.user.user_metadata.name || "Usuario",
-        role: (session.user.user_metadata.role as UserRole) || "entrenador",
-      }
+      // Si el perfil no existe, limpiar la sesión
+      await supabase.auth.signOut()
+      return null
     }
 
     return {
@@ -113,8 +117,13 @@ export async function getCurrentUser(): Promise<User | null> {
       name: profile.name,
       role: profile.role as UserRole,
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("[v0] getCurrentUser: Error inesperado:", error)
+    // Si es un error de usuario no encontrado, limpiar la sesión
+    if (error?.message?.includes("user_not_found") || error?.code === "user_not_found") {
+      console.warn("[v0] Usuario no encontrado en la base de datos, limpiando sesión")
+      await supabase.auth.signOut()
+    }
     return null
   }
 }
