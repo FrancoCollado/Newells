@@ -15,6 +15,7 @@ export type Permission =
   | "create_physio_report" // Crear informes de fisioterapia
   | "create_technical_report" // Crear informes técnicos
   | "create_psicosocial_report" // Nuevo permiso para informes psicosociales
+  | "create_dental_report" // Nuevo permiso para informes odontológicos
   | "edit_medical_area" // Editar área médica (eventos, informes generales)
   | "edit_psych_area" // Editar área psicológica
   | "edit_nutrition_area" // Editar área nutricional
@@ -22,6 +23,7 @@ export type Permission =
   | "edit_training_area" // Editar área de entrenamiento
   | "edit_goalkeepers_area" // Nuevo permiso para área arqueros
   | "edit_psicosocial_area" // Nuevo permiso para editar área psicosocial
+  | "edit_dental_area" // Nuevo permiso para editar área odontológica
   | "access_manager_panel" // Entrar a /manager
   | "edit_player_physical_data" // Nuevo permiso para editar datos físicos del jugador
   | "view_medical_records" // Nuevo permiso para ver fichas médicas
@@ -46,6 +48,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "create_physio_report",
     "create_technical_report",
     "create_psicosocial_report", // Nuevo permiso para informes psicosociales
+    "create_dental_report", // Nuevo permiso para informes odontológicos
     "edit_medical_area",
     "edit_psych_area",
     "edit_nutrition_area",
@@ -53,6 +56,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "edit_training_area",
     "edit_goalkeepers_area", // Nuevo permiso para área arqueros
     "edit_psicosocial_area", // Nuevo permiso para editar área psicosocial
+    "edit_dental_area", // Nuevo permiso para editar área odontológica
     "access_manager_panel",
     "edit_player_physical_data",
     "view_medical_records", // Dirigente puede ver fichas médicas
@@ -153,6 +157,17 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "view_indices",
     "view_injured_players",
   ],
+
+  // ODONTOLOGO - Nuevo rol para profesional odontológico
+  odontologo: [
+    "create_dental_report",
+    "edit_dental_area",
+    "view_reports",
+    "view_all_areas",
+    "view_indices",
+    "view_injured_players",
+    "view_medical_records",
+  ],
 }
 
 // ADMINISTRADOR was missing from UserRole type, so we'll handle it separately
@@ -192,6 +207,7 @@ export function canCreateReport(role: ExtendedUserRole, reportType: UserRole | "
   if (role === "kinesiologo" && reportType === "kinesiologo") return true
   if (role === "entrenador_arqueros" && reportType === "entrenador_arqueros") return true
   if (role === "psicosocial" && reportType === "psicosocial") return true
+  if (role === "odontologo" && reportType === "odontologo") return true
 
   return false
 }
@@ -213,6 +229,7 @@ export function canEditArea(role: ExtendedUserRole, area: string): boolean {
     fisioterapia: "edit_physio_area",
     arqueros: "edit_goalkeepers_area", // Nuevo mapeo para área arqueros
     psicosocial: "edit_psicosocial_area", // Nuevo mapeo para área psicosocial
+    odontologia: "edit_dental_area", // Nuevo mapeo para área odontología
   }
 
   const requiredPermission = areaPermissionMap[area]

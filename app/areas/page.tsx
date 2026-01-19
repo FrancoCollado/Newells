@@ -272,6 +272,7 @@ export default function AreasPage() {
     { id: "fisioterapia", label: "Fisioterapia", icon: Sparkles, color: "text-orange-600" },
     { id: "arqueros", label: "Arqueros", icon: Dumbbell, color: "text-cyan-600" },
     { id: "psicosocial", label: "Psicosocial", icon: Brain, color: "text-pink-600" },
+    { id: "odontologia", label: "Odontología", icon: HeartPulse, color: "text-teal-600" },
   ]
 
   const areaReports = reports
@@ -319,7 +320,7 @@ export default function AreasPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
             {areas.map((area) => (
               <TabsTrigger key={area.id} value={area.id} className="flex items-center gap-2">
                 <area.icon className={`h-4 w-4 ${area.color}`} />

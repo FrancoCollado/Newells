@@ -290,7 +290,8 @@ export default function PlayerDetailPage() {
     user.role === "nutricionista" ||
     user.role === "kinesiologo" ||
     user.role === "fisioterapeuta" ||
-    user.role === "psicologo"
+    user.role === "psicologo" ||
+    user.role === "odontologo"
   const canEditPhysicalData = hasPermission(user.role, "edit_player_physical_data")
   const canViewExtendedData = user.role === "dirigente" || user.role === "administrador"
   const canViewObservations = user.role === "dirigente" || user.role === "entrenador" || user.role === "administrador"

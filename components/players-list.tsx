@@ -31,6 +31,7 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
   const router = useRouter()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
@@ -45,26 +46,32 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
   const canEdit = userRole === "dirigente" || userRole === "entrenador"
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
     const fetchInitialPlayers = async () => {
       setLoading(true)
       setPage(0)
       setHasMore(true)
       const leagueFilter = leagueType === "all" ? "todas" : leagueType
-      console.log("[v0] PlayersList fetching with:", { division, leagueFilter })
-      const data = await getPlayersByDivision(division, 0, ITEMS_PER_PAGE, "", leagueFilter)
-      console.log("[v0] PlayersList received:", data.length, "players")
+      const data = await getPlayersByDivision(division, 0, ITEMS_PER_PAGE, debouncedSearchTerm, leagueFilter)
       setPlayers(data)
       if (data.length < ITEMS_PER_PAGE) setHasMore(false)
       setLoading(false)
     }
     fetchInitialPlayers()
-  }, [division, leagueType])
+  }, [division, leagueType, debouncedSearchTerm])
 
   const handleLoadMore = async () => {
     setLoadingMore(true)
     const nextPage = page + 1
     const leagueFilter = leagueType === "all" ? "todas" : leagueType
-    const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE, "", leagueFilter)
+    const newPlayers = await getPlayersByDivision(division, nextPage, ITEMS_PER_PAGE, debouncedSearchTerm, leagueFilter)
 
     if (newPlayers.length < ITEMS_PER_PAGE) {
       setHasMore(false)
@@ -75,19 +82,7 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
     setLoadingMore(false)
   }
 
-  const filteredPlayers = players
-    .filter((player) => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter((player) => {
-      if (pensionFilter !== "todos") {
-        console.log(
-          "[v0] Filtrando jugador:",
-          player.name,
-          "isPensioned:",
-          player.isPensioned,
-          "filtro:",
-          pensionFilter,
-        )
-      }
+  const filteredPlayers = players.filter((player) => {
       if (pensionFilter === "pensionados") return player.isPensioned === true
       if (pensionFilter === "no-pensionados") return !player.isPensioned
       return true
@@ -282,7 +277,7 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
         </div>
       )}
 
-      {hasMore && !searchTerm && (
+      {hasMore && !debouncedSearchTerm && (
         <div className="flex justify-center pt-4">
           <Button
             variant="outline"

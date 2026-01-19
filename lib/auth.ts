@@ -11,6 +11,7 @@ export type UserRole =
   | "entrenador_arqueros"
   | "kinesiologo"
   | "psicosocial" // Agregado rol psicosocial
+  | "odontologo" // Agregado rol odontólogo
 
 export interface User {
   id: string
@@ -134,6 +135,7 @@ export function getRoleLabel(role: UserRole): string {
     administrador: "Administrador",
     kinesiologo: "Kinesiólogo",
     psicosocial: "Psicosocial", // Agregada etiqueta para rol psicosocial
+    odontologo: "Odontólogo", // Agregada etiqueta para rol odontólogo
   }
   return labels[role]
 }

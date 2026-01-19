@@ -824,7 +824,10 @@ export async function updatePlayerLeagueTypes(
 }
 
 export async function updatePlayerInjuryStatus(playerId: string, isInjured: boolean): Promise<void> {
-  const { error } = await supabase.from("players").update({ is_injured: isInjured }).eq("id", playerId)
+  const { createServerClient } = await import("./supabase")
+  const supabaseServer = await createServerClient()
+  
+  const { error } = await supabaseServer.from("players").update({ is_injured: isInjured }).eq("id", playerId)
 
   if (error) {
     console.error("[v0] Error updating player injury status:", error)
