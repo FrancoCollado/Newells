@@ -9,6 +9,7 @@ export interface Report {
   professionalRole: UserRole
   date: string
   content: string
+  hyperlink?: string
   attachments: Array<{
     id: string
     name: string
@@ -81,6 +82,7 @@ export async function addReport(report: Omit<Report, "id" | "date">): Promise<Re
     professional_name: report.professionalName,
     professional_role: report.professionalRole,
     content: report.content,
+    hyperlink: report.hyperlink,
     attachments: report.attachments,
   }
 
@@ -103,6 +105,7 @@ export async function updateReport(report: Report): Promise<void> {
     .from("reports")
     .update({
       content: report.content,
+      hyperlink: report.hyperlink,
       attachments: report.attachments,
     })
     .eq("id", report.id)
@@ -131,6 +134,7 @@ function mapDatabaseReportToAppReport(dbReport: any): Report {
     professionalRole: dbReport.professional_role,
     date: dbReport.created_at || dbReport.date,
     content: dbReport.content,
+    hyperlink: dbReport.hyperlink,
     attachments: dbReport.attachments || [],
   }
 }

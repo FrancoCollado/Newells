@@ -29,6 +29,8 @@ import {
   Loader2,
   Upload,
   X,
+  Film,
+  Link as LinkIcon,
 } from "lucide-react"
 import {
   type AreaReport,
@@ -59,6 +61,11 @@ export default function AreasPage() {
   const [reports, setReports] = useState<AreaReport[]>([])
   const [events, setEvents] = useState<AreaEvent[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [editingReport, setEditingReport] = useState<AreaReport | null>(null)
+  const [newEventTitle, setNewEventTitle] = useState("")
+  const [newEventDescription, setNewEventDescription] = useState("")
+  const [showNewReportForm, setShowNewReportForm] = useState(false)
+  const [showNewEventForm, setShowNewEventForm] = useState(false)
 
   // Pagination states
   const [reportsPage, setReportsPage] = useState(0)
@@ -69,11 +76,7 @@ export default function AreasPage() {
   // Form states
   const [newReportTitle, setNewReportTitle] = useState("")
   const [newReportContent, setNewReportContent] = useState("")
-  const [newEventTitle, setNewEventTitle] = useState("")
-  const [newEventDescription, setNewEventDescription] = useState("")
-  const [showNewReportForm, setShowNewReportForm] = useState(false)
-  const [showNewEventForm, setShowNewEventForm] = useState(false)
-  const [editingReport, setEditingReport] = useState<AreaReport | null>(null)
+  const [newReportHyperlink, setNewReportHyperlink] = useState("")
   const [newReportAttachments, setNewReportAttachments] = useState<
     Array<{
       id: string
@@ -119,52 +122,53 @@ export default function AreasPage() {
   }
 
   const handleSaveReport = async () => {
-  if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
-  if (!canEditArea(user.role, selectedArea)) return
+    if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
+    if (!canEditArea(user.role, selectedArea)) return
 
-  setActionLoading(true)
+    setActionLoading(true)
 
-  let savedReport: AreaReport | null = null
+    let savedReport: AreaReport | null = null
 
-  if (editingReport) {
-    // 🔄 EDITAR INFORME
-    savedReport = await saveAreaReport({
-      id: editingReport.id,
-      area: selectedArea,
-      title: newReportTitle,
-      content: newReportContent,
-      attachments: newReportAttachments,
-    })
+    if (editingReport) {
+      // 🔄 EDITAR INFORME
+      savedReport = await saveAreaReport({
+        id: editingReport.id,
+        area: selectedArea,
+        title: newReportTitle,
+        content: newReportContent,
+        attachments: newReportAttachments,
+      })
 
-    if (savedReport) {
-      setReports((prev) =>
-        prev.map((r) => (r.id === editingReport.id ? savedReport! : r))
-      )
+      if (savedReport) {
+        setReports((prev) =>
+          prev.map((r) => (r.id === editingReport.id ? savedReport! : r))
+        )
+      }
+    } else {
+      // 🆕 CREAR INFORME
+      savedReport = await saveAreaReport({
+        area: selectedArea,
+        title: newReportTitle,
+        content: newReportContent,
+        createdBy: user.name,
+        hyperlink: newReportHyperlink,
+        attachments: newReportAttachments,
+      })
+
+      if (savedReport) {
+        setReports([savedReport, ...reports])
+      }
     }
-  } else {
-    // 🆕 CREAR INFORME
-    savedReport = await saveAreaReport({
-      area: selectedArea,
-      title: newReportTitle,
-      content: newReportContent,
-      createdBy: user.name,
-      attachments: newReportAttachments,
-    })
 
-    if (savedReport) {
-      setReports([savedReport, ...reports])
-    }
+    // Reset formulario
+    setNewReportTitle("")
+    setNewReportContent("")
+    setNewReportHyperlink("")
+    setNewReportAttachments([])
+    setEditingReport(null)
+    setShowNewReportForm(false)
+    setActionLoading(false)
   }
-
-  // Reset formulario
-  setNewReportTitle("")
-  setNewReportContent("")
-  setNewReportAttachments([])
-  setEditingReport(null)
-  setShowNewReportForm(false)
-  setActionLoading(false)
-}
-
 
   const handleSaveEvent = async () => {
     if (!newEventTitle.trim() || !selectedDate || !user) return
@@ -295,6 +299,7 @@ export default function AreasPage() {
     { id: "arqueros", label: "Arqueros", icon: Dumbbell, color: "text-cyan-600" },
     { id: "psicosocial", label: "Psicosocial", icon: Brain, color: "text-pink-600" },
     { id: "odontologia", label: "Odontología", icon: HeartPulse, color: "text-teal-600" },
+    { id: "videoanalisis", label: "Videoanalisis", icon: Film, color: "text-yellow-600" },
   ]
 
   const areaReports = reports
@@ -342,11 +347,15 @@ export default function AreasPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-muted/50">
             {areas.map((area) => (
-              <TabsTrigger key={area.id} value={area.id} className="flex items-center gap-2">
+              <TabsTrigger 
+                key={area.id} 
+                value={area.id} 
+                className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
                 <area.icon className={`h-4 w-4 ${area.color}`} />
-                <span className="text-sm">{area.label}</span>
+                <span className="text-sm font-medium">{area.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
@@ -494,6 +503,16 @@ export default function AreasPage() {
                             rows={6}
                           />
                         </div>
+                        <div>
+                          <Label>Hipervínculo (Opcional)</Label>
+                          <Input
+                            value={newReportHyperlink}
+                            onChange={(e) => setNewReportHyperlink(e.target.value)}
+                            placeholder="https://ejemplo.com/documento"
+                            type="url"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">Agregue un enlace a documentos externos, videos, etc.</p>
+                        </div>
                         <div className="space-y-2">
                           <Label>Archivos Adjuntos</Label>
                           <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors">
@@ -589,6 +608,7 @@ export default function AreasPage() {
                                       setEditingReport(report)
                                       setNewReportTitle(report.title)
                                       setNewReportContent(report.content)
+                                      setNewReportHyperlink(report.hyperlink || "")
                                       setNewReportAttachments(report.attachments || [])
                                       setShowNewReportForm(true)
                                     }}
@@ -611,6 +631,23 @@ export default function AreasPage() {
 
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.content}</p>
+                            
+                            {report.hyperlink && (
+                              <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center gap-2">
+                                  <LinkIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  <a 
+                                    href={report.hyperlink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium break-all"
+                                  >
+                                    {report.hyperlink}
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                            
                             {report.attachments && report.attachments.length > 0 && (
                               <div className="mt-3 pt-3 border-t space-y-1">
                                 <p className="text-xs font-medium text-muted-foreground mb-2">
@@ -618,34 +655,34 @@ export default function AreasPage() {
                                 </p>
                                 {report.attachments.map((attachment) => (
                                   <button
-                                      key={attachment.id}
-                                      onClick={() => {
-                                        const byteString = atob(attachment.url.split(",")[1])
-                                        const mimeString = attachment.url.split(",")[0].split(":")[1].split(";")[0]
+                                    key={attachment.id}
+                                    onClick={() => {
+                                      const byteString = atob(attachment.url.split(",")[1])
+                                      const mimeString = attachment.url.split(",")[0].split(":")[1].split(";")[0]
 
-                                        const ab = new ArrayBuffer(byteString.length)
-                                        const ia = new Uint8Array(ab)
+                                      const ab = new ArrayBuffer(byteString.length)
+                                      const ia = new Uint8Array(ab)
 
-                                        for (let i = 0; i < byteString.length; i++) {
-                                          ia[i] = byteString.charCodeAt(i)
-                                        }
+                                      for (let i = 0; i < byteString.length; i++) {
+                                        ia[i] = byteString.charCodeAt(i)
+                                      }
 
-                                        const blob = new Blob([ab], { type: mimeString })
-                                        const url = URL.createObjectURL(blob)
+                                      const blob = new Blob([ab], { type: mimeString })
+                                      const url = URL.createObjectURL(blob)
 
-                                        const a = document.createElement("a")
-                                        a.href = url
-                                        a.download = attachment.name
-                                        document.body.appendChild(a)
-                                        a.click()
-                                        document.body.removeChild(a)
-                                        URL.revokeObjectURL(url)
-                                      }}
-                                      className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors text-xs w-full text-left"
-                                      >
+                                      const a = document.createElement("a")
+                                      a.href = url
+                                      a.download = attachment.name
+                                      document.body.appendChild(a)
+                                      a.click()
+                                      document.body.removeChild(a)
+                                      URL.revokeObjectURL(url)
+                                    }}
+                                    className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors text-xs w-full text-left"
+                                  >
                                     <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                     <span className="flex-1 truncate">{attachment.name}</span>
-                                  </button>     
+                                  </button>
                                 ))}
                               </div>
                             )}

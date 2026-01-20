@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getRoleLabel } from "@/lib/auth"
 import type { Report } from "@/lib/reports"
-import { Calendar, User, Paperclip, FileText, Download } from "lucide-react"
+import { Calendar, User, Paperclip, FileText, Download, Link as LinkIcon } from "lucide-react"
 
 interface ReportCardProps {
   report: Report
@@ -57,6 +57,22 @@ export function ReportCard({ report, showDownload = false }: ReportCardProps) {
         <div className="prose prose-sm max-w-none mb-4">
           <p className="whitespace-pre-wrap text-sm leading-relaxed">{report.content}</p>
         </div>
+
+        {report.hyperlink && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4 text-blue-600" />
+              <a 
+                href={report.hyperlink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium break-all"
+              >
+                {report.hyperlink}
+              </a>
+            </div>
+          </div>
+        )}
 
         {report.attachments && report.attachments.length > 0 && (
           <div className="border-t pt-4">

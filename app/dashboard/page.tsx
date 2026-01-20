@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { PlayersList } from "@/components/players-list"
 import type { Division, LeagueType } from "@/lib/players"
 import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 import {
   LogOut,
   Users,

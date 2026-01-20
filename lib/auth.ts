@@ -10,8 +10,10 @@ export type UserRole =
   | "administrador"
   | "entrenador_arqueros"
   | "kinesiologo"
-  | "psicosocial" // Agregado rol psicosocial
-  | "odontologo" // Agregado rol odontólogo
+  | "psicosocial"
+  | "odontologo"
+  | "videoanalisis"
+  | "captacion" // Nuevo rol agregado
 
 export interface User {
   id: string
@@ -50,7 +52,6 @@ export async function login(email: string, password: string): Promise<User | nul
 
       if (profileError) {
         console.error("[v0] Error obteniendo perfil:", profileError.message)
-        // Fallback a user_metadata si no existe el perfil
         return {
           id: data.user.id,
           email: data.user.email!,
@@ -87,7 +88,6 @@ export async function getCurrentUser(): Promise<User | null> {
       error: sessionError,
     } = await supabase.auth.getSession()
 
-    // Si hay un error de sesión (como user_not_found), limpiar la sesión
     if (sessionError) {
       console.warn("[v0] Error de sesión, limpiando:", sessionError.message)
       await supabase.auth.signOut()
@@ -106,7 +106,6 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (profileError) {
       console.error("[v0] Error obteniendo perfil:", profileError.message)
-      // Si el perfil no existe, limpiar la sesión
       await supabase.auth.signOut()
       return null
     }
@@ -119,9 +118,7 @@ export async function getCurrentUser(): Promise<User | null> {
     }
   } catch (error: any) {
     console.error("[v0] getCurrentUser: Error inesperado:", error)
-    // Si es un error de usuario no encontrado, limpiar la sesión
     if (error?.message?.includes("user_not_found") || error?.code === "user_not_found") {
-      console.warn("[v0] Usuario no encontrado en la base de datos, limpiando sesión")
       await supabase.auth.signOut()
     }
     return null
@@ -143,8 +140,9 @@ export function getRoleLabel(role: UserRole): string {
     dirigente: "Dirigente",
     administrador: "Administrador",
     kinesiologo: "Kinesiólogo",
-    psicosocial: "Psicosocial", // Agregada etiqueta para rol psicosocial
-    odontologo: "Odontólogo", // Agregada etiqueta para rol odontólogo
+    psicosocial: "Psicosocial",
+    odontologo: "Odontólogo",
+    captacion: "Captación", // Etiqueta agregada
   }
   return labels[role]
 }

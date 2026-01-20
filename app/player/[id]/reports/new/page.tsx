@@ -1,5 +1,7 @@
 "use client"
 
+import { Input } from "@/components/ui/input"
+
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
@@ -25,6 +27,7 @@ export default function NewReportPage() {
   const [user, setUser] = useState<User | null>(null)
   const [player, setPlayer] = useState<Player | null>(null)
   const [content, setContent] = useState("")
+  const [hyperlink, setHyperlink] = useState("")
   const [attachments, setAttachments] = useState<
     Array<{
       id: string
@@ -116,6 +119,7 @@ export default function NewReportPage() {
         professionalName: user.name,
         professionalRole: user.role,
         content: content.trim(),
+        hyperlink: hyperlink.trim() || undefined,
         attachments,
       })
 
@@ -180,6 +184,18 @@ export default function NewReportPage() {
                       className="resize-none"
                     />
                     <p className="text-xs text-muted-foreground">Escriba un informe detallado sobre el jugador</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="hyperlink">Hipervínculo (Opcional)</Label>
+                    <Input
+                      id="hyperlink"
+                      type="url"
+                      placeholder="https://ejemplo.com/video-analisis"
+                      value={hyperlink}
+                      onChange={(e) => setHyperlink(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Agregue un enlace a documentos externos, videos, análisis, etc.</p>
                   </div>
 
                   <div className="space-y-2">

@@ -110,7 +110,8 @@ export default function PlayerReportsPage() {
     user.role === "fisioterapeuta" ||
     user.role === "psicologo" ||
     user.role === "psicosocial" ||
-    user.role === "odontologo"
+    user.role === "odontologo" ||
+    user.role === "videoanalisis"
 
   return (
     <AuthGuard>
@@ -157,7 +158,7 @@ export default function PlayerReportsPage() {
             <CardContent>
               {canViewAllReportsTabs ? (
                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                  <TabsList className="flex flex-wrap h-auto">
+                  <TabsList className="flex flex-wrap h-auto gap-2 p-2">
                     <TabsTrigger value="todos">Todos</TabsTrigger>
                     <TabsTrigger value="medico">Médicos</TabsTrigger>
                     <TabsTrigger value="psicologo">Psicológicos</TabsTrigger>
@@ -166,6 +167,7 @@ export default function PlayerReportsPage() {
                     <TabsTrigger value="fisioterapeuta">Fisioterapia</TabsTrigger>
                     <TabsTrigger value="psicosocial">Psicosocial</TabsTrigger>
                     <TabsTrigger value="odontologo">Odontología</TabsTrigger>
+                    <TabsTrigger value="videoanalisis">Videoanalisis</TabsTrigger>
                   </TabsList>
 
                   <div className="space-y-4 mt-4">

@@ -7,6 +7,7 @@ export interface AreaReport {
   title: string
   content: string
   createdBy: string
+  hyperlink?: string
   attachments: Array<{
     id: string
     name: string
@@ -46,6 +47,7 @@ export async function getAreaReports(area: string, page = 0, limit = 10): Promis
     title: r.title,
     content: r.content,
     createdBy: r.created_by,
+    hyperlink: r.hyperlink,
     attachments: r.attachments || [],
   }))
 }
@@ -56,6 +58,7 @@ export async function saveAreaReport(report: {
   title: string
   content: string
   createdBy?: string
+  hyperlink?: string
   attachments?: Array<{
     id: string
     name: string
@@ -70,6 +73,7 @@ export async function saveAreaReport(report: {
       .update({
         title: report.title,
         content: report.content,
+        hyperlink: report.hyperlink,
         attachments: report.attachments,
       })
       .eq("id", report.id)
@@ -88,6 +92,7 @@ export async function saveAreaReport(report: {
       title: data.title,
       content: data.content,
       createdBy: data.created_by,
+      hyperlink: data.hyperlink,
       attachments: data.attachments || [],
     }
   }
@@ -100,6 +105,7 @@ export async function saveAreaReport(report: {
       title: report.title,
       content: report.content,
       created_by: report.createdBy,
+      hyperlink: report.hyperlink,
       attachments: report.attachments,
     })
     .select()
@@ -117,6 +123,7 @@ export async function saveAreaReport(report: {
     title: data.title,
     content: data.content,
     createdBy: data.created_by,
+    hyperlink: data.hyperlink,
     attachments: data.attachments || [],
   }
 }
