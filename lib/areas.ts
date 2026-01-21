@@ -24,6 +24,36 @@ export interface AreaEvent {
   description: string
 }
 
+export async function uploadAreaReportAttachment(file: File): Promise<{ id: string; name: string; url: string; type: string }> {
+  try {
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`
+    
+    const { data, error } = await supabase.storage
+      .from("area_report_attachments")
+      .upload(fileName, file, { cacheControl: "31536000" })
+    
+    if (error) {
+      console.error("Error uploading area report attachment:", error)
+      throw new Error("Error uploading file")
+    }
+    
+    const { data: publicData } = supabase.storage
+      .from("area_report_attachments")
+      .getPublicUrl(fileName)
+    
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      url: publicData.publicUrl,
+      type: file.type || "application/octet-stream",
+    }
+  } catch (error) {
+    console.error("Error en uploadAreaReportAttachment:", error)
+    throw error
+  }
+}
+
 export async function getAreaReports(area: string, page = 0, limit = 10): Promise<AreaReport[]> {
   const from = page * limit
   const to = from + limit - 1
@@ -68,6 +98,7 @@ export async function saveAreaReport(report: {
 }): Promise<AreaReport | null> {
   // 🔄 EDITAR INFORME
   if (report.id) {
+    console.log("[v0] saveAreaReport - Actualizando informe ID:", report.id)
     const { data, error } = await supabase
       .from("area_reports")
       .update({
@@ -80,11 +111,12 @@ export async function saveAreaReport(report: {
       .select()
       .single()
 
-    if (error) {
-      console.error("Error updating area report:", error)
-      return null
-    }
+  if (error) {
+    console.error("[v0] Error updating area report:", (error as any).message || error)
+    return null
+  }
 
+    console.log("[v0] Informe actualizado exitosamente")
     return {
       id: data.id,
       area: data.area,
@@ -98,7 +130,10 @@ export async function saveAreaReport(report: {
   }
 
   // 🆕 CREAR INFORME
-  const { data, error } = await supabase
+  console.log("[v0] saveAreaReport - Creando nuevo informe en área:", report.area)
+  console.log("[v0] saveAreaReport - Datos:", { title: report.title, content: report.content, createdBy: report.createdBy })
+  
+  const { data: createData, error: createError } = await supabase
     .from("area_reports")
     .insert({
       area: report.area,
@@ -111,20 +146,25 @@ export async function saveAreaReport(report: {
     .select()
     .single()
 
-  if (error) {
-    console.error("Error creating area report:", error)
+  if (createError) {
+    console.error("[v0] Error creating area report - Status:", (createError as any).status)
+    console.error("[v0] Error creating area report - Message:", (createError as any).message)
+    console.error("[v0] Error creating area report - Details:", (createError as any).details)
+    console.error("[v0] Error creating area report - Hint:", (createError as any).hint)
+    console.error("[v0] Error creating area report - Full Error:", JSON.stringify(createError, null, 2))
     return null
   }
 
+  console.log("[v0] Informe creado exitosamente, ID:", createData.id)
   return {
-    id: data.id,
-    area: data.area,
-    date: data.date,
-    title: data.title,
-    content: data.content,
-    createdBy: data.created_by,
-    hyperlink: data.hyperlink,
-    attachments: data.attachments || [],
+    id: createData.id,
+    area: createData.area,
+    date: createData.date,
+    title: createData.title,
+    content: createData.content,
+    createdBy: createData.created_by,
+    hyperlink: createData.hyperlink,
+    attachments: createData.attachments || [],
   }
 }
 
