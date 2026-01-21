@@ -16,6 +16,37 @@ export interface Training {
   }>
 }
 
+export async function uploadTrainingAttachment(file: File): Promise<{ id: string; name: string; url: string; type: string }> {
+  try {
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`
+    
+    const { data, error } = await supabase.storage
+      .from("training_attachments")
+      .upload(fileName, file, { cacheControl: "31536000" })
+    
+    if (error) {
+      console.error("Error uploading training attachment:", error)
+      throw new Error("Error uploading file")
+    }
+    
+    // Get public URL
+    const { data: publicData } = supabase.storage
+      .from("training_attachments")
+      .getPublicUrl(fileName)
+    
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      url: publicData.publicUrl,
+      type: file.type || "application/octet-stream",
+    }
+  } catch (error) {
+    console.error("Error en uploadTrainingAttachment:", error)
+    throw error
+  }
+}
+
 export async function getTrainings(): Promise<Training[]> {
   const { data, error } = await supabase.from("trainings").select("*").order("date", { ascending: false })
 

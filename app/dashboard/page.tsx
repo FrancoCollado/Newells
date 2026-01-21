@@ -159,13 +159,21 @@ export default function DashboardPage() {
     Array.from(files).forEach((file) => {
       const reader = new FileReader()
       reader.onload = (event) => {
+        const dataUrl = event.target?.result as string
         const newAttachment = {
           id: Math.random().toString(36).substr(2, 9),
           name: file.name,
           type: file.type || "application/octet-stream",
-          url: event.target?.result as string,
+          url: dataUrl,
         }
         setTrainingAttachments((prev) => [...prev, newAttachment])
+        
+        // Guardar en sessionStorage para que persista la descarga
+        try {
+          sessionStorage.setItem(`training_file_${newAttachment.id}`, dataUrl)
+        } catch (e) {
+          console.warn("[v0] No se pudo guardar en sessionStorage:", e)
+        }
       }
       reader.readAsDataURL(file)
     })
@@ -175,8 +183,46 @@ export default function DashboardPage() {
     }
   }
 
-  const removeTrainingAttachment = (id: string) => {
-    setTrainingAttachments((prev) => prev.filter((a) => a.id !== id))
+  const handleDownloadAttachment = (attachment: { name: string; url: string; id?: string }) => {
+    try {
+      console.log("[v0] Iniciando descarga de:", attachment.name)
+      
+      let urlToUse = attachment.url
+      
+      // Si la URL es blob, intentar recuperar del sessionStorage
+      if (attachment.url.startsWith("blob:") && attachment.id) {
+        const stored = sessionStorage.getItem(`training_file_${attachment.id}`)
+        if (stored) {
+          urlToUse = stored
+          console.log("[v0] Usando data URL recuperada del sessionStorage")
+        }
+      }
+      
+      if (!urlToUse) {
+        toast({
+          title: "Error",
+          description: "El archivo no está disponible",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const link = document.createElement("a")
+      link.href = urlToUse
+      link.download = attachment.name
+      link.style.display = "none"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      console.log("[v0] Descarga completada")
+    } catch (error) {
+      console.error("[v0] Error descargando archivo:", error)
+      toast({
+        title: "Error descargando archivo",
+        description: "No se pudo descargar el archivo. Intente nuevamente.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSaveTraining = async () => {
@@ -635,15 +681,14 @@ export default function DashboardPage() {
                               <p className="text-xs font-medium text-gray-700 mb-2">Archivos adjuntos:</p>
                               <div className="flex flex-wrap gap-2">
                                 {training.attachments.map((attachment) => (
-                                  <a
+                                  <button
                                     key={attachment.id}
-                                    href={attachment.url}
-                                    download={attachment.name}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300 transition-colors"
+                                    onClick={() => handleDownloadAttachment(attachment)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300 transition-colors cursor-pointer"
                                   >
                                     <span>📎</span>
                                     <span className="max-w-[150px] truncate">{attachment.name}</span>
-                                  </a>
+                                  </button>
                                 ))}
                               </div>
                             </div>
