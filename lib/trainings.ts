@@ -26,23 +26,43 @@ export async function uploadTrainingAttachment(file: File): Promise<{ id: string
       .upload(fileName, file, { cacheControl: "31536000" })
     
     if (error) {
-      console.error("Error uploading training attachment:", error)
-      throw new Error("Error uploading file")
+      console.error("[v0] Error uploading training attachment:", error)
+      throw new Error("Error uploading file: " + error.message)
     }
     
-    // Get public URL
+    console.log("[v0] Archivo subido exitosamente:", fileName)
+
+    // Intentar obtener URL pública primero
     const { data: publicData } = supabase.storage
       .from("training_attachments")
       .getPublicUrl(fileName)
     
+    console.log("[v0] URL Pública generada:", publicData.publicUrl.substring(0, 50))
+
+    // Si la URL pública falla, usar URL firmada (válida por 1 año)
+    let urlToUse = publicData.publicUrl
+    
+    try {
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("training_attachments")
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1 año
+      
+      if (signedData && !signedError) {
+        urlToUse = signedData.signedUrl
+        console.log("[v0] URL firmada generada como fallback")
+      }
+    } catch (e) {
+      console.warn("[v0] No se pudo generar URL firmada, usando pública:", e)
+    }
+
     return {
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
-      url: publicData.publicUrl,
+      url: urlToUse,
       type: file.type || "application/octet-stream",
     }
   } catch (error) {
-    console.error("Error en uploadTrainingAttachment:", error)
+    console.error("[v0] Error en uploadTrainingAttachment:", error)
     throw error
   }
 }
