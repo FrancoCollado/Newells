@@ -31,6 +31,7 @@ import {
   BarChart3,
   Stethoscope,
   Upload,
+  MessageSquare,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -370,6 +371,14 @@ export default function DashboardPage() {
               <p className="text-sm text-red-100">Sistema de Gestión Deportiva</p>
             </div>
             <div className="flex items-center gap-4">
+              <Button
+                  variant="ghost"
+                  onClick={() => router.push("/dashboard/messages")}
+                  className="text-white hover:bg-white/20"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Mensajes
+              </Button>
               {hasPermission(user?.role, "access_manager_panel") && (
                 <Button
                   variant="ghost"

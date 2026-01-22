@@ -1,0 +1,207 @@
+"use client"
+
+import { useEffect, useRef, useState, useTransition } from "react"
+import { getMessagesAction, sendMessageAction, markAsReadAction } from "../actions"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Send, Loader2 } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+
+interface Message {
+  id: string
+  content: string
+  sender_type: "PLAYER" | "PROFESSIONAL"
+  created_at: string
+}
+
+interface ChatInterfaceProps {
+  conversationId: string
+  initialMessages: Message[]
+  currentUserId: string // Player ID, though sender_type check is enough
+}
+
+export function ChatInterface({ conversationId, initialMessages, currentUserId }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [inputValue, setInputValue] = useState("")
+  const [isPending, startTransition] = useTransition()
+  
+  // Pagination State
+  const [msgPage, setMsgPage] = useState(0)
+  const [hasMore, setHasMore] = useState(initialMessages.length >= 50)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const topRef = useRef<HTMLDivElement>(null)
+  
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Polling for new messages
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const latestBatch = await getMessagesAction(conversationId, 0, 10)
+        setMessages(prev => {
+           const existingIds = new Set(prev.map(m => m.id))
+           const trulyNew = latestBatch.filter(m => !existingIds.has(m.id))
+           
+           if (trulyNew.length === 0) return prev
+           
+           // Si hay mensajes nuevos de un profesional, marcamos como leído
+           const hasNewFromProfessional = trulyNew.some(m => m.sender_type === "PROFESSIONAL")
+           if (hasNewFromProfessional) {
+              markAsReadAction(conversationId)
+           }
+           
+           return [...prev, ...trulyNew]
+        })
+      } catch (e) {}
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [conversationId])
+
+  // Load More (Older) Messages
+  const loadOlderMessages = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    
+    try {
+      const nextPage = msgPage + 1
+      const olderMessages = await getMessagesAction(conversationId, nextPage, 50)
+      
+      if (olderMessages.length < 50) setHasMore(false)
+      
+      if (olderMessages.length > 0) {
+        setMessages(prev => [...olderMessages, ...prev])
+        setMsgPage(nextPage)
+      }
+    } catch (error) {
+      console.error("Error loading history:", error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // Intersection Observer for Top
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadOlderMessages()
+        }
+      },
+      { threshold: 0.5 }
+    )
+    if (topRef.current) observer.observe(topRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, msgPage])
+
+  // Scroll to bottom only on INITIAL load or MY messages
+  useEffect(() => {
+    if (msgPage === 0) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [messages.length === initialMessages.length])
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputValue.trim() || isPending) return
+
+    const content = inputValue.trim()
+    setInputValue("")
+
+    const optimisticMsg: Message = {
+      id: "temp-" + Date.now(),
+      content,
+      sender_type: "PLAYER",
+      created_at: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, optimisticMsg])
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100)
+
+    startTransition(async () => {
+      try {
+        await sendMessageAction(conversationId, content)
+      } catch (error) {
+        console.error("Failed to send", error)
+      }
+    })
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-zinc-950/20">
+      <div className="flex-1 overflow-hidden relative">
+        <ScrollArea className="h-full custom-scrollbar" ref={scrollRef}>
+          <div className="p-4 md:p-6 space-y-6 pb-10 max-w-3xl mx-auto">
+            {/* Infinite Scroll Trigger */}
+            <div ref={topRef} className="h-10 flex items-center justify-center">
+                {loadingMore && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+
+            {!hasMore && messages.length > 0 && (
+                <div className="flex justify-center my-4">
+                <span className="text-[10px] bg-white dark:bg-zinc-800 px-3 py-1 rounded-full text-muted-foreground uppercase tracking-widest font-medium shadow-sm border">
+                    Inicio de la conversación
+                </span>
+                </div>
+            )}
+
+            {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex w-full max-w-[85%] flex-col gap-1",
+                    msg.sender_type === "PLAYER" ? "ml-auto items-end" : "items-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "rounded-2xl px-4 py-3 text-sm shadow-sm",
+                      msg.sender_type === "PLAYER"
+                        ? "bg-gradient-to-br from-red-600 to-red-700 text-white rounded-br-none"
+                        : "bg-white dark:bg-zinc-800 border text-foreground rounded-bl-none"
+                    )}
+                  >
+                    {msg.content}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground px-1">
+                    {format(new Date(msg.created_at), "HH:mm", { locale: es })}
+                  </span>
+                </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        </ScrollArea>
+      </div>
+
+      <div className="shrink-0 p-4 bg-background border-t">
+        <form onSubmit={handleSend} className="flex gap-2 max-w-3xl mx-auto items-end">
+          <div className="flex-1 relative">
+            <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Escribe tu mensaje..."
+                className="pr-12 py-6 rounded-2xl bg-muted/50 border-muted-foreground/20 focus-visible:ring-red-600 focus-visible:border-red-600 pl-5"
+                disabled={isPending}
+            />
+            <Button 
+                type="submit" 
+                size="icon" 
+                className={cn(
+                    "absolute right-1.5 top-1.5 h-9 w-9 rounded-xl transition-all duration-200",
+                    inputValue.trim() && !isPending 
+                        ? "bg-red-600 hover:bg-red-700 text-white shadow-md" 
+                        : "bg-muted text-muted-foreground"
+                )}
+                disabled={!inputValue.trim() || isPending}
+            >
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

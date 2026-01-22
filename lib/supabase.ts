@@ -42,3 +42,28 @@ export async function createServerClient() {
     },
   )
 }
+
+export function createAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!serviceRoleKey) {
+    console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY no está definido. Las operaciones de admin fallarán.")
+    // Fallback to anon key but this won't bypass RLS
+    return createSupabaseServerClient(
+      supabaseUrl || "https://placeholder.supabase.co",
+      supabaseAnonKey || "placeholder-key",
+      { cookies: { getAll: () => [], setAll: () => {} } }
+    )
+  }
+
+  return createSupabaseServerClient(
+    supabaseUrl || "https://placeholder.supabase.co",
+    serviceRoleKey,
+    {
+      cookies: {
+        getAll() { return [] },
+        setAll() {},
+      },
+    },
+  )
+}

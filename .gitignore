@@ -25,3 +25,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+PLAYER_PORTAL_PLAN.txt
+FULL_DB_SETUP.sql
