@@ -46,7 +46,13 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
 
   const loadEvolutions = async () => {
     setLoading(true)
+    console.log("[v0] Cargando evoluciones para categoría:", activeTab)
     const data = await getEvolutionsAction(playerId, activeTab)
+    console.log("[v0] Evoluciones cargadas:", data)
+    console.log("[v0] Total de evoluciones:", data?.length)
+    data?.forEach((evo, idx) => {
+      console.log(`[v0] Evolución ${idx} - file_url:`, evo.file_url)
+    })
     setEvolutions(data)
     setLoading(false)
   }
@@ -63,26 +69,40 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
 
     setUploading(true)
 
-    const result = await saveEvolutionAction(playerId, activeTab, observations, selectedFile)
+    try {
+      console.log("[v0] Guardando evolución - observaciones:", observations.length, "archivo:", selectedFile?.name)
+      const result = await saveEvolutionAction(playerId, activeTab, observations, selectedFile)
+      console.log("[v0] Resultado de guardado COMPLETO:", JSON.stringify(result, null, 2))
+      console.log("[v0] result.success:", result?.success)
+      console.log("[v0] result.error:", result?.error)
+      console.log("[v0] result.id:", result?.id)
 
-    if (result.success) {
-      toast({
-        title: "Éxito",
-        description: "La evolución se guardó correctamente",
-      })
-      setObservations("")
-      setSelectedFile(null)
-      setShowUploadForm(false)
-      loadEvolutions()
-    } else {
+      if (result?.success) {
+        toast({
+          title: "Éxito",
+          description: "La evolución se guardó correctamente",
+        })
+        setObservations("")
+        setSelectedFile(null)
+        setShowUploadForm(false)
+        loadEvolutions()
+      } else {
+        toast({
+          title: "Error",
+          description: result?.error || "No se pudo guardar la evolución",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error en handleUpload:", error)
       toast({
         title: "Error",
-        description: result.error || "No se pudo guardar la evolución",
+        description: "Ocurrió un error al guardar la evolución",
         variant: "destructive",
       })
+    } finally {
+      setUploading(false)
     }
-
-    setUploading(false)
   }
 
   const handleDelete = async (evolution: PsychosocialEvolution) => {
@@ -100,6 +120,52 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
       toast({
         title: "Error",
         description: result.error || "No se pudo eliminar la evolución",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDownloadFile = (evolution: PsychosocialEvolution) => {
+    try {
+      if (!evolution.file_url) {
+        toast({
+          title: "Error",
+          description: "El archivo no está disponible",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Detectar blob URLs antiguas
+      if (evolution.file_url.startsWith("blob:")) {
+        toast({
+          title: "Archivo Expirado",
+          description: `"${evolution.file_name || "archivo"}" ha expirado. Por favor solicite al profesional que lo vuelva a subir.`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // URLs públicas de Vercel Blob
+      if (evolution.file_url.startsWith("https://")) {
+        const link = document.createElement("a")
+        link.href = evolution.file_url
+        link.download = evolution.file_name || "archivo"
+        link.target = "_blank"
+        link.rel = "noopener noreferrer"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        return
+      }
+
+      // Fallback: abrir en nueva pestaña
+      window.open(evolution.file_url, "_blank")
+    } catch (error) {
+      console.error("[v0] Error descargando archivo:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo descargar el archivo",
         variant: "destructive",
       })
     }
@@ -189,15 +255,13 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
                               <p className="text-sm mb-2 whitespace-pre-wrap">{evolution.observations}</p>
                             )}
                             {evolution.file_url && (
-                              <a
-                                href={evolution.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-purple-700 hover:text-purple-800 font-medium hover:underline"
+                              <button
+                                onClick={() => handleDownloadFile(evolution)}
+                                className="inline-flex items-center gap-2 text-sm text-purple-700 hover:text-purple-800 font-medium hover:underline cursor-pointer bg-none border-none p-0"
                               >
                                 <Download className="h-4 w-4" />
                                 {evolution.file_name || "Descargar archivo"}
-                              </a>
+                              </button>
                             )}
                           </CardContent>
                         </Card>

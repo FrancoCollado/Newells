@@ -607,8 +607,8 @@ export default function PlayerDetailPage() {
             <CardContent>
               {recentReports.length > 0 ? (
                 <div className="space-y-4">
-                  {recentReports.map((report) => (
-                    <ReportCard key={report.id} report={report} showDownload={user.role === "dirigente"} />
+                {recentReports.map((report) => (
+                  <ReportCard key={report.id} report={report} showDownload={true} />
                   ))}
 
                   <div className="text-center pt-4 border-t">

@@ -47,17 +47,30 @@ export async function createEvolution(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log("[v0] createEvolution - Iniciando, archivo:", file?.name)
     let fileUrl: string | null = null
     let fileName: string | null = null
 
     if (file) {
-      const blob = await put(`psychosocial/${playerId}/${Date.now()}-${file.name}`, file, {
-        access: "public",
-      })
-      fileUrl = blob.url
-      fileName = file.name
+      try {
+        console.log("[v0] Subiendo archivo a Blob:", file.name)
+        console.log("[v0] Token disponible:", !!process.env.BLOB_READ_WRITE_TOKEN)
+        
+        const blob = await put(`psychosocial/${playerId}/${Date.now()}-${file.name}`, file, {
+          access: "public",
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+        })
+        fileUrl = blob.url
+        fileName = file.name
+        console.log("[v0] Archivo subido a Blob, URL:", fileUrl)
+      } catch (blobError: any) {
+        console.warn("[v0] Advertencia: No se pudo subir archivo a Blob:", blobError.message)
+        console.warn("[v0] Continuando sin archivo...")
+        // Continuar sin el archivo - la BD se guardará con null
+      }
     }
 
+    console.log("[v0] Insertando en BD - playerId:", playerId, "category:", category, "observations:", observations.length)
     const { error } = await supabase.from("psychosocial_evolutions").insert({
       player_id: playerId,
       category,
@@ -67,8 +80,12 @@ export async function createEvolution(
       created_by: userId,
     })
 
-    if (error) throw error
+    if (error) {
+      console.error("[v0] Error de BD:", error)
+      throw error
+    }
 
+    console.log("[v0] Evolución guardada exitosamente en BD")
     return { success: true }
   } catch (error: any) {
     console.error("[v0] Error guardando evolución psicosocial:", error)

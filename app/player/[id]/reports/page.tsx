@@ -180,7 +180,7 @@ export default function PlayerReportsPage() {
                     ) : (
                       <>
                         {reports.map((report) => (
-                          <ReportCard key={report.id} report={report} showDownload={user.role === "dirigente"} />
+                          <ReportCard key={report.id} report={report} showDownload={true} />
                         ))}
                         {hasMore && (
                           <div className="text-center pt-4">
@@ -206,7 +206,7 @@ export default function PlayerReportsPage() {
                   ) : (
                     <>
                       {reports.map((report) => (
-                        <ReportCard key={report.id} report={report} showDownload={false} />
+                        <ReportCard key={report.id} report={report} showDownload={true} />
                       ))}
                       {hasMore && (
                         <div className="text-center pt-4">
