@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Search, Loader2, FileText, Home } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Loader2, FileText, Home, Printer } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -52,6 +52,7 @@ export function PlayersManagement() {
   // Pagination
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [totalPlayers, setTotalPlayers] = useState(0)
   const ITEMS_PER_PAGE = 10
 
   // Form state
@@ -77,23 +78,32 @@ export function PlayersManagement() {
 
   const loadPlayers = async () => {
     setLoading(true)
-    const data = await getPlayersByDivision(divisionFilter, page, ITEMS_PER_PAGE, searchTerm)
-    console.log("[v0] Jugadores cargados de BD:", data.length)
-    console.log("[v0] Filtro de pensión actual:", pensionFilter)
-    console.log("[v0] Jugadores con isPensioned definido:", data.filter((p) => p.isPensioned !== undefined).length)
-    console.log("[v0] Jugadores pensionados:", data.filter((p) => p.isPensioned === true).length)
+    try {
+      // Cargar TODOS los jugadores sin paginación en la BD (limit 10000)
+      const allPlayers = await getPlayersByDivision(divisionFilter, 0, 10000, searchTerm)
+      console.log("[v0] Total de jugadores cargados:", allPlayers.length)
 
-    let filteredData = data
-    if (pensionFilter === "pensionados") {
-      filteredData = data.filter((p) => p.isPensioned === true)
-    } else if (pensionFilter === "no-pensionados") {
-      filteredData = data.filter((p) => !p.isPensioned)
+      let filteredData = allPlayers
+      if (pensionFilter === "pensionados") {
+        filteredData = allPlayers.filter((p) => p.isPensioned === true)
+      } else if (pensionFilter === "no-pensionados") {
+        filteredData = allPlayers.filter((p) => !p.isPensioned)
+      }
+
+      // Ordenar alfabéticamente por nombre
+      filteredData.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+
+      // Aplicar paginación en cliente después de ordenar
+      const startIdx = page * ITEMS_PER_PAGE
+      const paginatedData = filteredData.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+
+      console.log("[v0] Jugadores en página actual:", paginatedData.length, "de", filteredData.length)
+      setPlayers(paginatedData)
+      setTotalPlayers(filteredData.length)
+      setHasMore(startIdx + ITEMS_PER_PAGE < filteredData.length)
+    } finally {
+      setLoading(false)
     }
-
-    console.log("[v0] Jugadores después de filtrar:", filteredData.length)
-    setPlayers(filteredData)
-    setHasMore(data.length === ITEMS_PER_PAGE)
-    setLoading(false)
   }
 
   // Reset page when filters change
@@ -287,6 +297,100 @@ export function PlayersManagement() {
     })
   }
 
+  const handlePrint = async () => {
+    try {
+      // Cargar todos los jugadores para imprimir
+      const allPlayers = await getPlayersByDivision(divisionFilter, 0, 10000, searchTerm)
+      
+      let printData = allPlayers
+      if (pensionFilter === "pensionados") {
+        printData = allPlayers.filter((p) => p.isPensioned === true)
+      } else if (pensionFilter === "no-pensionados") {
+        printData = allPlayers.filter((p) => !p.isPensioned)
+      }
+      
+      // Ordenar alfabéticamente
+      printData.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+      
+      // Crear contenido para imprimir
+      let content = `<html><head><title>Listado de Jugadores</title>`
+      content += `<style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; color: #991b1b; border-bottom: 3px solid #991b1b; padding-bottom: 10px; }
+        h2 { color: #666; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #991b1b; color: white; padding: 8px; text-align: left; font-weight: bold; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .total { font-weight: bold; margin-top: 10px; font-size: 14px; }
+        .division-label { color: #666; font-size: 12px; }
+      </style></head><body>`
+      
+      content += `<h1>Listado de Jugadores</h1>`
+      
+      // Filtros aplicados
+      let filterInfo = "Filtros aplicados: "
+      if (divisionFilter !== "todas") {
+        filterInfo += `División: ${getDivisionLabel(divisionFilter)} | `
+      }
+      if (pensionFilter !== "todos") {
+        filterInfo += `Pensión: ${pensionFilter} | `
+      }
+      if (searchTerm) {
+        filterInfo += `Búsqueda: ${searchTerm}`
+      }
+      if (filterInfo !== "Filtros aplicados: ") {
+        content += `<p class="division-label">${filterInfo}</p>`
+      }
+      
+      content += `<table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>División</th>
+            <th>Posición</th>
+            <th>Edad</th>
+            <th>Altura</th>
+            <th>Peso</th>
+          </tr>
+        </thead>
+        <tbody>`
+      
+      printData.forEach((player, idx) => {
+        content += `<tr>
+          <td>${idx + 1}</td>
+          <td>${player.name}</td>
+          <td>${getDivisionLabel(player.division)}</td>
+          <td>${player.position}</td>
+          <td>${player.age || "-"}</td>
+          <td>${player.height || "-"}</td>
+          <td>${player.weight || "-"}</td>
+        </tr>`
+      })
+      
+      content += `</tbody></table>`
+      content += `<p class="total">Total de jugadores: <strong>${printData.length}</strong></p>`
+      content += `<p style="text-align: center; margin-top: 30px; color: #999; font-size: 12px;">Impreso el ${new Date().toLocaleDateString()}</p>`
+      content += `</body></html>`
+      
+      // Abrir ventana de impresión
+      const printWindow = window.open("", "_blank")
+      if (printWindow) {
+        printWindow.document.write(content)
+        printWindow.document.close()
+        printWindow.print()
+      }
+    } catch (error) {
+      console.error("Error al imprimir:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo generar el documento de impresión",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading && players.length === 0) {
     return (
       <div className="flex justify-center py-12">
@@ -340,10 +444,16 @@ export function PlayersManagement() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="bg-red-700 hover:bg-red-800">
-          <Plus className="h-4 w-4 mr-2" />
-          Agregar Jugador
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handlePrint} variant="outline" className="border-red-700 text-red-700 hover:bg-red-50 bg-transparent">
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimir
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="bg-red-700 hover:bg-red-800">
+            <Plus className="h-4 w-4 mr-2" />
+            Agregar Jugador
+          </Button>
+        </div>
       </div>
 
       {loading ? (
