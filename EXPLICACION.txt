@@ -19,3 +19,16 @@ Se agregaron nuevos scripts de migración en la carpeta `scripts/` para soportar
 - `026_setup_portal_data.sql`: Configuración inicial del portal.
 - `027_setup_dni_auth.sql`: Preparación para autenticación única por DNI.
 - `028_create_chat_tables.sql`: Tablas para el módulo de mensajería.
+
+### 4. Configuración Requerida (.env)
+Se agregó una nueva variable de entorno crítica necesaria para ciertas funciones administrativas del servidor (bypass de RLS para creación de usuarios, etc.):
+
+- **Variable:** `SUPABASE_SERVICE_ROLE_KEY`
+- **Dónde encontrarla:**
+  1. Ve a tu dashboard de Supabase.
+  2. Entra en `Project Settings` (icono de engranaje).
+  3. Ve a la sección `API`.
+  4. Busca bajo "Project API keys" la clave que dice `service_role` (secret).
+  5. Copia ese valor y agrégalo a tu archivo `.env`.
+
+⚠️ **Importante:** Esta clave tiene permisos completos de superusuario. Nunca debe ser expuesta en el lado del cliente (no agregar prefijo NEXT_PUBLIC).
