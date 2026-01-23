@@ -32,6 +32,7 @@ import {
   Stethoscope,
   Upload,
   MessageSquare,
+  HeartPulse,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -42,6 +43,7 @@ import { hasPermission } from "@/lib/rbac"
 import { IndicesManager } from "@/components/indices-manager"
 import { CaptacionManager } from "@/components/captacion-manager"
 import { LeagueTypeFilter } from "@/components/league-type-filter"
+import { ReadaptacionManager } from "@/components/readaptacion-manager"
 
 const Loading = () => null;
 
@@ -79,6 +81,8 @@ export default function DashboardPage() {
   const [showCaptacionModal, setShowCaptacionModal] = useState(false)
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
   const [editingTrainingData, setEditingTrainingData] = useState<any | null>(null)
+
+  const [showReadaptacionModal, setShowReadaptacionModal] = useState(false)
 
   const ITEMS_PER_PAGE = 5
 
@@ -413,6 +417,17 @@ export default function DashboardPage() {
                     Captación
                   </Button>
               )}
+
+              {/* NUEVO BOTÓN DE READAPTACIÓN */}
+              <Button
+                variant="ghost"
+                onClick={() => setShowReadaptacionModal(true)} // <-- Esto abre el modal
+                className="text-white hover:bg-white/20"
+              >
+                <HeartPulse className="h-4 w-4 mr-2" />
+                Readaptación
+              </Button>
+
               <div className="text-right">
                 <p className="font-semibold">{user?.name}</p>
                 <Badge variant="secondary" className="bg-white/20 hover:bg-white/30">
@@ -869,6 +884,12 @@ export default function DashboardPage() {
         <CaptacionManager
           userName={user.name}
           onClose={() => setShowCaptacionModal(false)}
+        />
+      )}
+      {showReadaptacionModal && user && (
+        <ReadaptacionManager
+          userName={user.name}
+          onClose={() => setShowReadaptacionModal(false)}
         />
       )}
     </div>

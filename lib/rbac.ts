@@ -124,4 +124,4 @@ export function canViewMedicalRecords(role: ExtendedUserRole): boolean { return 
 export function canEditMedicalRecords(role: ExtendedUserRole): boolean { return hasPermission(role, "edit_medical_records") }
 export function canViewInjuredPlayers(role: ExtendedUserRole): boolean { return hasPermission(role, "view_injured_players") }
 export function canManageInjuryEvolutions(role: ExtendedUserRole): boolean { return hasPermission(role, "manage_injury_evolutions") }
-export function canViewPsychosocialData(role: ExtendedUserRole): boolean { return role === "psicosocial" || role === "dirigente" }
+export function canViewPsychosocialData(role: ExtendedUserRole): boolean { return hasPermission(role, "view_all_areas") }
