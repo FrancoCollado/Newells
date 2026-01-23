@@ -238,10 +238,10 @@ function InjuredPlayersContent() {
                           <p className="text-base">{injury.daysAbsent} días</p>
                         </div>
                       )}
-                      {injury.treatment && (
+                      {injury.treatment && injury.treatment.length > 0 && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Tratamiento</p>
-                          <p className="text-base capitalize">{injury.treatment.replace("_", " ")}</p>
+                          <p className="text-base capitalize">{injury.treatment.map((t: string) => t.replace("_", " ")).join(", ")}</p>
                         </div>
                       )}
                     </div>
