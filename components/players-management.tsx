@@ -467,6 +467,7 @@ export function PlayersManagement() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>División</TableHead>
+                <TableHead>Liga</TableHead>
                 <TableHead>Posición</TableHead>
                 <TableHead>Edad</TableHead>
                 <TableHead>Altura</TableHead>
@@ -478,7 +479,7 @@ export function PlayersManagement() {
             <TableBody>
               {players.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No se encontraron jugadores
                   </TableCell>
                 </TableRow>
@@ -488,6 +489,38 @@ export function PlayersManagement() {
                     <TableCell className="font-medium">{player.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{getDivisionLabel(player.division)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={player.leagueTypes?.[0] || "AMBAS"}
+                        onValueChange={async (value: LeagueType) => {
+                          const result = await updatePlayer(player.id, {
+                            leagueTypes: [value],
+                          })
+                          if (result) {
+                            toast({
+                              title: "Liga actualizada",
+                              description: `Liga cambiada a ${value}`,
+                            })
+                            loadPlayers()
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "No se pudo actualizar la liga",
+                              variant: "destructive",
+                            })
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-fit">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AFA">AFA</SelectItem>
+                          <SelectItem value="ROSARINA">ROSARINA</SelectItem>
+                          <SelectItem value="AMBAS">AMBAS</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>{player.position}</TableCell>
                     <TableCell>{player.age} años</TableCell>
