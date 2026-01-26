@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
-import { getCurrentUser, type User } from "@/lib/auth"
+import { getCurrentUser, logout, type User } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ import { hasPermission } from "@/lib/rbac"
 import { useToast } from "@/hooks/use-toast"
 import { getActiveInjuriesAction, addEvolutionAction, dischargeInjuryAction } from "./actions"
 import type { Injury } from "@/lib/injuries"
+import { ProfessionalLayout } from "@/components/professional-layout"
 
 type InjuryWithPlayer = Injury & { playerName: string; playerDivision: string }
 
@@ -127,6 +128,11 @@ function InjuredPlayersContent() {
     }
   }
 
+  const handleLogout = async () => {
+    await logout()
+    router.push("/login")
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -151,29 +157,12 @@ function InjuredPlayersContent() {
   const canManageEvolutions = hasPermission(user.role, "manage_injury_evolutions")
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push("/dashboard")}
-              className="text-white hover:bg-white/20"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Jugadores Lesionados</h1>
-              <p className="text-sm text-red-100">Gestión y seguimiento de lesiones activas</p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <ProfessionalLayout user={user} onLogout={handleLogout}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Jugadores Lesionados</h1>
+        <p className="text-muted-foreground">Gestión y seguimiento de lesiones activas</p>
+      </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
         {injuries.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -300,7 +289,6 @@ function InjuredPlayersContent() {
             ))}
           </div>
         )}
-      </main>
 
       {/* Dialog para agregar evolución */}
       <Dialog open={showEvolutionDialog} onOpenChange={setShowEvolutionDialog}>
@@ -337,6 +325,6 @@ function InjuredPlayersContent() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </ProfessionalLayout>
   )
 }

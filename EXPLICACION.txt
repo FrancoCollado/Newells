@@ -1,0 +1,34 @@
+Hola! Te dejo un resumen de los cambios más recientes que se implementaron en el proyecto para que tengas contexto al hacer el merge:
+
+### 1. Portal de Jugadores (`/portal`)
+Se creó una aplicación completa dentro del proyecto para el uso exclusivo de los jugadores.
+- **Rutas:** `app/portal/login`, `app/portal/dashboard`, `app/portal/messages`.
+- **Autenticación:** Se implementó un sistema de Auth paralelo usando JWT y Cookies (`lib/portal-auth.ts`). Esto permite que los jugadores se logueen sin interferir con la autenticación de administradores/profesionales.
+  - *Nota:* Actualmente el login es por coincidencia de Nombre, pero se preparó el terreno para migrar a DNI (ver script `027`).
+- **Funcionalidades:**
+  - Visualización de ficha técnica (Estado de lesión, Categoría, Posición).
+  - Actualización de datos personales y físicos (Peso, Altura, Dirección) con validaciones de servidor (`actions.ts`).
+
+### 2. Sistema de Chat / Mensajería
+Se agregó una funcionalidad para que los jugadores puedan comunicarse con el staff.
+- **Base de Datos:** Se agregó el script `028_create_chat_tables.sql` para manejar conversaciones y mensajes.
+- **UI:** Componentes en `components/chat` para la interfaz de chat en tiempo real (o asíncrono).
+
+### 3. Base de Datos (Supabase)
+Se agregaron nuevos scripts de migración en la carpeta `scripts/` para soportar las nuevas funcionalidades:
+- `026_setup_portal_data.sql`: Configuración inicial del portal.
+- `027_setup_dni_auth.sql`: Preparación para autenticación única por DNI.
+- `028_create_chat_tables.sql`: Tablas para el módulo de mensajería.
+
+### 4. Configuración Requerida (.env)
+Se agregó una nueva variable de entorno crítica necesaria para ciertas funciones administrativas del servidor (bypass de RLS para creación de usuarios, etc.):
+
+- **Variable:** `SUPABASE_SERVICE_ROLE_KEY`
+- **Dónde encontrarla:**
+  1. Ve a tu dashboard de Supabase.
+  2. Entra en `Project Settings` (icono de engranaje).
+  3. Ve a la sección `API`.
+  4. Busca bajo "Project API keys" la clave que dice `service_role` (secret).
+  5. Copia ese valor y agrégalo a tu archivo `.env`.
+
+⚠️ **Importante:** Esta clave tiene permisos completos de superusuario. Nunca debe ser expuesta en el lado del cliente (no agregar prefijo NEXT_PUBLIC).

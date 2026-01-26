@@ -13,13 +13,14 @@ export type UserRole =
   | "psicosocial"
   | "odontologo"
   | "videoanalisis"
-  | "captacion" // Nuevo rol agregado
+  | "captacion"
 
 export interface User {
   id: string
   email: string
   name: string
   role: UserRole
+  photo?: string
 }
 
 export async function login(email: string, password: string): Promise<User | null> {
@@ -67,6 +68,7 @@ export async function login(email: string, password: string): Promise<User | nul
         email: profile.email,
         name: profile.name,
         role: profile.role as UserRole,
+        photo: profile.photo,
       }
     }
 
@@ -115,6 +117,7 @@ export async function getCurrentUser(): Promise<User | null> {
       email: profile.email,
       name: profile.name,
       role: profile.role as UserRole,
+      photo: profile.photo,
     }
   } catch (error: any) {
     console.error("[v0] getCurrentUser: Error inesperado:", error)
@@ -142,7 +145,8 @@ export function getRoleLabel(role: UserRole): string {
     kinesiologo: "Kinesiólogo",
     psicosocial: "Psicosocial",
     odontologo: "Odontólogo",
-    captacion: "Captación", // Etiqueta agregada
+    captacion: "Captación",
+    videoanalisis: "Videoanálisis",
   }
   return labels[role]
 }

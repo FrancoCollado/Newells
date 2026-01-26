@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { getCurrentUser, type User } from "@/lib/auth"
+import { getCurrentUser, logout, type User } from "@/lib/auth"
 import { getDivisionLabel, type Division, type Player, getPlayers } from "@/lib/players"
 import { saveMatch, generateMatchId } from "@/lib/matches"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { ArrowLeft, Upload, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { LeagueType } from "@/lib/players"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ProfessionalLayout } from "@/components/professional-layout"
 
 export default function AddMatchPage() {
   const router = useRouter()
@@ -63,6 +64,11 @@ export default function AddMatchPage() {
     }
     init()
   }, [division, leagueType])
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/login")
+  }
 
   const handlePlayerToggle = (player: Player) => {
     const exists = selectedPlayers.find((p) => p.playerId === player.id)
@@ -169,22 +175,12 @@ export default function AddMatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
-        <div className="container mx-auto px-4 py-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/dashboard")}
-            className="text-white hover:bg-white/20 mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al Inicio
-          </Button>
-          <h1 className="text-2xl font-bold">Cargar Partido - {getDivisionLabel(division)}</h1>
-        </div>
-      </header>
+    <ProfessionalLayout user={user} onLogout={handleLogout}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Cargar Partido - {getDivisionLabel(division)}</h1>
+      </div>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="max-w-4xl mx-auto">
         <form onSubmit={handleSubmit}>
           <Card className="mb-6">
             <CardHeader>
@@ -346,7 +342,7 @@ export default function AddMatchPage() {
             </CardContent>
           </Card>
         </form>
-      </main>
-    </div>
+      </div>
+    </ProfessionalLayout>
   )
 }

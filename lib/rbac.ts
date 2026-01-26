@@ -33,6 +33,12 @@ export type Permission =
   | "view_injured_players"
   | "manage_injury_evolutions"
 
+export type ExtendedUserRole = UserRole | "administrador"
+
+export const ADMINISTRADOR_PERMISSIONS: Permission[] = [
+  "manage_players", "view_all_data", "view_reports", "manage_tactics", "access_manager_panel",
+]
+
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   dirigente: [
     "manage_players", "manage_tactics", "manage_matches", "manage_trainings", "view_all_data",
@@ -86,12 +92,6 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "view_indices",
   ],
 }
-
-export type ExtendedUserRole = UserRole | "administrador"
-
-export const ADMINISTRADOR_PERMISSIONS: Permission[] = [
-  "manage_players", "view_all_data", "view_reports", "manage_tactics", "access_manager_panel",
-]
 
 export function hasPermission(role: ExtendedUserRole, permission: Permission): boolean {
   if (role === "administrador") {
