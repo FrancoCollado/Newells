@@ -167,7 +167,7 @@ export async function getProfessionalConversations(professionalId: string, page 
   // If no search, standard left join is fine, but consistency is good.
   let selectQuery = `
       *,
-      player:players!inner(id, name, division, photo)
+      player:players!inner(id, name, division, photo, last_seen)
     `
 
   let dbQuery = supabase

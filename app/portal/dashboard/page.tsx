@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { PortalProfileForm } from "@/components/portal-profile-form"
 import Link from "next/link"
+import { PlayerStatusManager } from "@/components/player-status-manager"
 
 export default async function PlayerDashboard() {
   const session = await requirePlayerSession()
@@ -72,6 +73,7 @@ export default async function PlayerDashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        <PlayerStatusManager playerId={player.id} initialLastSeen={(player as any).last_seen} />
         
         {/* Hero / Welcome Section */}
         <div className="flex flex-col md:flex-row gap-6 mb-8 items-start md:items-center justify-between">

@@ -25,6 +25,7 @@ import {
   getProfessionalConversationsAction 
 } from "./actions"
 import { supabase } from "@/lib/supabase"
+import { formatPresence } from "@/lib/format-presence"
 
 interface Conversation {
   id: string
@@ -37,6 +38,7 @@ interface Conversation {
     name: string
     division: string
     photo?: string
+    last_seen?: string | null
   }
 }
 
@@ -59,6 +61,7 @@ export function ProfessionalInbox({
   const [inputValue, setInputValue] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
   
   // Sidebar Pagination
   const [page, setPage] = useState(0)
@@ -78,6 +81,68 @@ export function ProfessionalInbox({
 
   const selectedConversation = conversations.find(c => c.id === selectedId)
   const filteredConversations = conversations;
+
+  // Presence Subscription (Online Status)
+  useEffect(() => {
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: 'professional-observer',
+        },
+      },
+    })
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        const onlineIds = new Set<string>()
+        
+        for (const key in state) {
+          if (state[key].length > 0) {
+            // @ts-ignore
+            const pid = state[key][0].player_id
+            if (pid) onlineIds.add(pid)
+          }
+        }
+        setOnlineUsers(onlineIds)
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        // @ts-ignore
+        const pid = newPresences[0].player_id
+        if (pid) {
+            setOnlineUsers(prev => new Set(prev).add(pid))
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        // @ts-ignore
+        const pid = leftPresences[0].player_id
+        if (pid) {
+            setOnlineUsers(prev => {
+                const next = new Set(prev)
+                next.delete(pid)
+                return next
+            })
+            // Update local last_seen to "now" to avoid stale "Active 2 days ago" after being online
+            setConversations(prev => prev.map(c => {
+                if (c.player.id === pid) {
+                    return {
+                        ...c,
+                        player: {
+                            ...c.player,
+                            last_seen: new Date().toISOString()
+                        }
+                    }
+                }
+                return c
+            }))
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   // Server-side Search Effect
   useEffect(() => {
@@ -107,7 +172,6 @@ export function ProfessionalInbox({
     setLoadingMore(true)
     try {
       const nextPage = page + 1
-      // Pasamos el searchTerm actual para que la paginación respete la búsqueda
       const newConversations = await getProfessionalConversationsAction(nextPage, 20, searchTerm)
       
       if (newConversations.length < 20) {
@@ -133,7 +197,6 @@ export function ProfessionalInbox({
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        // Disparamos la carga un poco antes de llegar al final (threshold 0.1)
         if (entries[0].isIntersecting && hasMore && !loadingMore) {
           loadMoreConversations()
         }
@@ -142,13 +205,12 @@ export function ProfessionalInbox({
     )
     if (loadMoreRef.current) observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, page, searchTerm]) // searchTerm es necesario aquí para que la función capture el valor actual
+  }, [hasMore, loadingMore, page, searchTerm])
 
   // Load More (Older) Messages
   const loadOlderMessages = async () => {
     if (loadingMoreMessages || !hasMoreMessages || !selectedId) return
     
-    // Capturar la altura antes de actualizar
     const scrollContainer = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
     const previousScrollHeight = scrollContainer?.scrollHeight || 0;
 
@@ -172,7 +234,6 @@ export function ProfessionalInbox({
         setMessages(prev => [...olderBatch as Message[], ...prev])
         setMsgPage(nextPage)
 
-        // Ajustar el scroll después de que el DOM se actualice
         requestAnimationFrame(() => {
             if (scrollContainer) {
                 const newScrollHeight = scrollContainer.scrollHeight;
@@ -230,7 +291,6 @@ export function ProfessionalInbox({
     }
 
     fetchMessages()
-    // ... realtime listeners ...
 
     const channel = supabase
       .channel(`chat:${selectedId}`)
@@ -260,26 +320,25 @@ export function ProfessionalInbox({
     }
   }, [selectedId])
 
-  // Global Realtime listener for the SIDEBAR (to update unread counts and positions)
+  // Global Realtime listener for the SIDEBAR
   useEffect(() => {
     const globalChannel = supabase
       .channel('global-chat-updates')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'chat_messages',
-        filter: 'sender_type=eq.PLAYER' // Only messages FROM players
+        table: 'chat_messages', 
+        filter: 'sender_type=eq.PLAYER' 
       }, (payload) => {
         const newMessage = payload.new as Message
         
         setConversations(prev => {
            const index = prev.findIndex(c => c.id === newMessage.conversation_id)
-           if (index === -1) return prev // Conversation not in current loaded list
+           if (index === -1) return prev 
            
            const list = [...prev]
            const conv = list[index]
            
-           // Update unread count (if not the selected one)
            const isSelected = newMessage.conversation_id === selectedId
            const updatedConv = { 
               ...conv, 
@@ -287,7 +346,6 @@ export function ProfessionalInbox({
               unread_count: isSelected ? 0 : conv.unread_count + 1 
            }
            
-           // Move to top
            list.splice(index, 1)
            return [updatedConv, ...list]
         })
@@ -297,7 +355,7 @@ export function ProfessionalInbox({
     return () => {
       supabase.removeChannel(globalChannel)
     }
-  }, [selectedId]) // selectedId needed to know if we should increment unread
+  }, [selectedId])
 
   // Auto-scroll
   useEffect(() => {
@@ -340,7 +398,7 @@ export function ProfessionalInbox({
     <div className="flex h-full rounded-2xl border bg-background shadow-lg overflow-hidden ring-1 ring-border">
       {/* Sidebar List */}
       <div className="w-1/3 border-r bg-muted/10 flex flex-col min-w-[320px] h-full">
-        {/* Sidebar Header - Static in flex col */}
+        {/* Sidebar Header */}
         <div className="shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
           <h2 className="text-lg font-bold mb-4 px-1">Mensajes</h2>
           <div className="relative">
@@ -354,68 +412,69 @@ export function ProfessionalInbox({
           </div>
         </div>
 
-        {/* Conversation List - Scrollable */}
+        {/* Conversation List */}
         <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full custom-scrollbar">
                 <div className="flex flex-col gap-1 p-3">
-                    {filteredConversations.map((conv) => (
-                    <button
-                        key={conv.id}
-                        onClick={() => setSelectedId(conv.id)}
-                        className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative",
-                        selectedId === conv.id 
-                            ? "bg-red-50 dark:bg-red-900/10 shadow-sm border border-red-100 dark:border-red-900/30" 
-                            : "hover:bg-muted/60 border border-transparent"
-                        )}
-                    >
-                        {/* Active Indicator Bar */}
-                        {selectedId === conv.id && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-red-600 rounded-r-full" />
-                        )}
+                    {filteredConversations.map((conv) => {
+                      const isOnline = onlineUsers.has(conv.player.id)
+                      const presenceText = formatPresence(conv.player.last_seen, isOnline)
 
-                        <div className="relative shrink-0">
-                            <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
-                                <AvatarImage src={conv.player?.photo} className="object-cover" />
-                                <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700 font-semibold text-muted-foreground">
-                                    {conv.player?.name?.substring(0,2).toUpperCase() || "??"}
-                                </AvatarFallback>
-                            </Avatar>
-                            {conv.unread_count > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-background">
-                                    {conv.unread_count}
-                                </span>
+                      return (
+                        <button
+                            key={conv.id}
+                            onClick={() => setSelectedId(conv.id)}
+                            className={cn(
+                            "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative",
+                            selectedId === conv.id 
+                                ? "bg-red-50 dark:bg-red-900/10 shadow-sm border border-red-100 dark:border-red-900/30" 
+                                : "hover:bg-muted/60 border border-transparent"
                             )}
-                        </div>
+                        >
+                            {selectedId === conv.id && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-red-600 rounded-r-full" />
+                            )}
 
-                        <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                            <span className={cn(
-                                "font-semibold truncate text-sm",
-                                selectedId === conv.id ? "text-red-900 dark:text-red-100" : "text-foreground"
-                            )}>
-                                {conv.player?.name || "Jugador"}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                                {conv.last_message_at ? format(new Date(conv.last_message_at), "HH:mm", { locale: es }) : ''}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 overflow-hidden">
+                            <div className="relative shrink-0">
+                                <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                                    <AvatarImage src={conv.player?.photo} className="object-cover" />
+                                    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700 font-semibold text-muted-foreground">
+                                        {conv.player?.name?.substring(0,2).toUpperCase() || "??"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                {isOnline && (
+                                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                                )}
+                                {conv.unread_count > 0 && (
+                                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-background">
+                                        {conv.unread_count}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
                                 <span className={cn(
-                                    "text-xs px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wider text-[10px]",
-                                    selectedId === conv.id ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200" : "bg-muted text-muted-foreground"
+                                    "font-semibold truncate text-sm",
+                                    selectedId === conv.id ? "text-red-900 dark:text-red-100" : "text-foreground"
                                 )}>
-                                    {conv.area}
+                                    {conv.player?.name || "Jugador"}
                                 </span>
-                                <span className="text-xs text-muted-foreground truncate">
-                                {conv.unread_count > 0 ? "Nuevo mensaje" : "Ver conversación"}
+                                <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
+                                    {conv.last_message_at ? format(new Date(conv.last_message_at), "HH:mm", { locale: es }) : ''}
                                 </span>
                             </div>
-                        </div>
-                        </div>
-                    </button>
-                    ))}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                    <span className="text-xs text-muted-foreground truncate">
+                                      {conv.unread_count > 0 ? "Nuevo mensaje" : presenceText || "Ver conversación"}
+                                    </span>
+                                </div>
+                            </div>
+                            </div>
+                        </button>
+                      )
+                    })}
                     
                     {filteredConversations.length === 0 && !loadingMore && (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground opacity-60">
@@ -436,19 +495,31 @@ export function ProfessionalInbox({
       <div className="flex-1 flex flex-col bg-slate-50 dark:bg-zinc-950/50 h-full relative overflow-hidden">
         {selectedId && selectedConversation ? (
           <>
-            {/* Chat Header - Static in flex col */}
+            {/* Chat Header */}
             <div className="shrink-0 h-16 border-b flex items-center justify-between px-6 bg-background/80 backdrop-blur-md z-20 shadow-sm">
               <div className="flex items-center gap-4">
-                <Avatar className="h-10 w-10 border border-border shadow-sm">
-                  <AvatarImage src={selectedConversation.player?.photo} className="object-cover" />
-                  <AvatarFallback>{selectedConversation.player?.name?.[0] || "P"}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-10 w-10 border border-border shadow-sm">
+                    <AvatarImage src={selectedConversation.player?.photo} className="object-cover" />
+                    <AvatarFallback>{selectedConversation.player?.name?.[0] || "P"}</AvatarFallback>
+                  </Avatar>
+                  {onlineUsers.has(selectedConversation.player.id) && (
+                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white" />
+                  )}
+                </div>
+                
                 <div>
                   <h3 className="font-bold text-sm leading-none mb-1">{selectedConversation.player?.name}</h3>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                     <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                     <span className="capitalize">{selectedConversation.player?.division}</span>
-                     <span>•</span>
+                     <span className={cn(
+                        "w-2 h-2 rounded-full inline-block",
+                        onlineUsers.has(selectedConversation.player.id) ? "bg-green-500" : "bg-zinc-300"
+                     )} />
+                     {onlineUsers.has(selectedConversation.player.id) 
+                        ? <span className="text-green-600 font-medium">En línea</span>
+                        : <span>{formatPresence(selectedConversation.player.last_seen, false)}</span>
+                     }
+                     <span className="mx-1 text-zinc-300">•</span>
                      <span className="capitalize">{selectedConversation.area}</span>
                   </div>
                 </div>
@@ -468,11 +539,10 @@ export function ProfessionalInbox({
               </div>
             </div>
 
-            {/* Messages - Scrollable area */}
+            {/* Messages */}
             <div className="flex-1 overflow-hidden relative">
                 <ScrollArea className="h-full custom-scrollbar" ref={scrollRef}>
                     <div className="p-6 space-y-6">
-                        {/* Top Scroll Trigger */}
                         <div ref={topRef} className="h-10 flex items-center justify-center">
                             {loadingMoreMessages && <Check className="h-4 w-4 animate-spin text-muted-foreground" />}
                         </div>
@@ -485,11 +555,6 @@ export function ProfessionalInbox({
                             </div>
                         )}
 
-                        <div className="flex justify-center my-4">
-                           <span className="text-[10px] bg-muted px-3 py-1 rounded-full text-muted-foreground uppercase tracking-widest font-medium">
-                              Conversación Actual
-                           </span>
-                        </div>
                         {messages.map((msg, index) => {
                             const isMe = msg.sender_type === "PROFESSIONAL"
                             const showAvatar = !isMe && (index === 0 || messages[index-1].sender_type !== "PLAYER")
@@ -546,7 +611,7 @@ export function ProfessionalInbox({
                 </ScrollArea>
             </div>
 
-            {/* Input - Static bottom */}
+            {/* Input */}
             <div className="shrink-0 p-4 bg-background border-t">
               <form onSubmit={handleSend} className="flex gap-3 items-end max-w-4xl mx-auto">
                 <div className="flex-1 relative shadow-sm">

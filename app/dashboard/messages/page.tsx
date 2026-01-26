@@ -4,6 +4,8 @@ import { getProfessionalConversations } from "@/lib/chat"
 import { MessagesClientLayout } from "./client-layout"
 import { UserRole } from "@/lib/auth"
 
+export const dynamic = 'force-dynamic'
+
 export default async function MessagesPage() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
