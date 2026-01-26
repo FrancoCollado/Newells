@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Upload, Download, Trash2, Loader2, X, FileText } from "lucide-react"
-import { getEvaluationsByDivision, saveEvaluation, deleteEvaluation, uploadEvaluationFile } from "@/lib/evaluations"
+import { uploadEvaluationFile } from "@/lib/evaluations"
+import { getEvaluationsAction, saveEvaluationAction, deleteEvaluationAction } from "@/app/dashboard/actions"
 import type { Evaluation } from "@/lib/evaluations"
 
 interface EvaluationsManagerProps {
@@ -36,7 +37,7 @@ export function EvaluationsManager({ division, userName, onClose, canEdit = true
 
   const loadEvaluations = async () => {
     setLoading(true)
-    const data = await getEvaluationsByDivision(division)
+    const data = await getEvaluationsAction(division)
     setEvaluations(data)
     setLoading(false)
   }
@@ -62,7 +63,7 @@ export function EvaluationsManager({ division, userName, onClose, canEdit = true
         fileName = selectedFile.name
       }
 
-      await saveEvaluation({
+      await saveEvaluationAction({
         division,
         title,
         description: description || undefined,
@@ -95,7 +96,7 @@ export function EvaluationsManager({ division, userName, onClose, canEdit = true
     if (!confirm("¿Está seguro de eliminar esta evaluación?")) return
 
     try {
-      await deleteEvaluation(evaluation.id)
+      await deleteEvaluationAction(evaluation.id)
       toast({
         title: "Éxito",
         description: "La evaluación se eliminó correctamente",
