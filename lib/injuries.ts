@@ -66,6 +66,10 @@ export type Injury = {
   medicalObservations?: string
   responsibleDoctor?: string
 
+  // Alta
+  isDischarged: boolean
+  dischargeDate?: string
+
   createdAt: string
   updatedAt: string
 }
@@ -239,6 +243,8 @@ export async function updateInjury(injuryId: string, injury: Partial<Injury>): P
   if (injury.rtpCriteriaGps !== undefined) dbInjury.rtp_criteria_gps = injury.rtpCriteriaGps
   if (injury.medicalObservations !== undefined) dbInjury.medical_observations = injury.medicalObservations
   if (injury.responsibleDoctor !== undefined) dbInjury.responsible_doctor = injury.responsibleDoctor
+  if (injury.isDischarged !== undefined) dbInjury.is_discharged = injury.isDischarged
+  if (injury.dischargeDate !== undefined) dbInjury.discharge_date = injury.dischargeDate
 
   const { data, error } = await supabase.from("injuries").update(dbInjury).eq("id", injuryId).select().single()
 
@@ -340,6 +346,7 @@ export async function getActiveInjuries(): Promise<Array<Injury & { playerName: 
         is_injured
       )
     `)
+    .eq("is_discharged", false)
     .order("injury_date", { ascending: false })
 
   if (error) {
@@ -357,6 +364,36 @@ export async function getActiveInjuries(): Promise<Array<Injury & { playerName: 
     }))
 
   return activeInjuries
+}
+
+export async function getAllInjuries(): Promise<Array<Injury & { playerName: string; playerDivision: string }>> {
+  const supabase = await createServerClient()
+
+  const { data, error } = await supabase
+    .from("injuries")
+    .select(`
+      *,
+      players:player_id (
+        name,
+        division,
+        is_injured
+      )
+    `)
+    .order("injury_date", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error fetching all injuries:", error)
+    throw error
+  }
+
+  // Devolver todas las lesiones (activas y descargadas)
+  const allInjuries = (data || []).map((item: any) => ({
+    ...mapDatabaseInjuryToAppInjury(item),
+    playerName: item.players?.name || "Desconocido",
+    playerDivision: item.players?.division || "N/A",
+  }))
+
+  return allInjuries
 }
 
 function mapDatabaseInjuryToAppInjury(dbInjury: any): Injury {
@@ -393,6 +430,8 @@ function mapDatabaseInjuryToAppInjury(dbInjury: any): Injury {
     rtpCriteriaGps: dbInjury.rtp_criteria_gps || false,
     medicalObservations: dbInjury.medical_observations,
     responsibleDoctor: dbInjury.responsible_doctor,
+    isDischarged: dbInjury.is_discharged || false,
+    dischargeDate: dbInjury.discharge_date,
     createdAt: dbInjury.created_at,
     updatedAt: dbInjury.updated_at,
   }

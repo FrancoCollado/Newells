@@ -72,6 +72,7 @@ export default function DashboardPage() {
 
   const [trainingsPage, setTrainingsPage] = useState(0)
   const [hasMoreTrainings, setHasMoreTrainings] = useState(true)
+  const [showAllTrainings, setShowAllTrainings] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [savingTraining, setSavingTraining] = useState(false)
@@ -86,6 +87,30 @@ export default function DashboardPage() {
   const [showReadaptacionModal, setShowReadaptacionModal] = useState(false)
 
   const ITEMS_PER_PAGE = 5
+
+  const fetchDivisionData = async () => {
+    if (selectedDivision !== "all") {
+      setMatchesPage(0)
+      setTrainingsPage(0)
+      setHasMoreMatches(true)
+      setHasMoreTrainings(true)
+
+      // Initial fetch (page 0)
+      const [divisionTrainings, divisionMatches] = await Promise.all([
+        getTrainingsByDivision(selectedDivision, 0, ITEMS_PER_PAGE),
+        getMatchesByDivision(selectedDivision, 0, ITEMS_PER_PAGE),
+      ])
+
+      setTrainings(divisionTrainings)
+      setMatches(divisionMatches)
+
+      if (divisionTrainings.length < ITEMS_PER_PAGE) setHasMoreTrainings(false)
+      if (divisionMatches.length < ITEMS_PER_PAGE) setHasMoreMatches(false)
+    } else {
+      setTrainings([])
+      setMatches([])
+    }
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -105,29 +130,6 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const fetchDivisionData = async () => {
-      if (selectedDivision !== "all") {
-        setMatchesPage(0)
-        setTrainingsPage(0)
-        setHasMoreMatches(true)
-        setHasMoreTrainings(true)
-
-        // Initial fetch (page 0)
-        const [divisionTrainings, divisionMatches] = await Promise.all([
-          getTrainingsByDivision(selectedDivision, 0, ITEMS_PER_PAGE),
-          getMatchesByDivision(selectedDivision, 0, ITEMS_PER_PAGE),
-        ])
-
-        setTrainings(divisionTrainings)
-        setMatches(divisionMatches)
-
-        if (divisionTrainings.length < ITEMS_PER_PAGE) setHasMoreTrainings(false)
-        if (divisionMatches.length < ITEMS_PER_PAGE) setHasMoreMatches(false)
-      } else {
-        setTrainings([])
-        setMatches([])
-      }
-    }
     fetchDivisionData()
   }, [selectedDivision])
 
@@ -158,6 +160,27 @@ export default function DashboardPage() {
 
     setTrainings([...trainings, ...newTrainings])
     setTrainingsPage(nextPage)
+    setLoadingMoreTrainings(false)
+  }
+
+  const handleLoadAllTrainings = async () => {
+    if (selectedDivision === "all") return
+    setLoadingMoreTrainings(true)
+    setShowAllTrainings(true)
+    
+    // Cargar todos los entrenamientos sin límite
+    let allTrainings: any[] = []
+    let page = 0
+    let hasMore = true
+    
+    while (hasMore) {
+      const pageTrainings = await getTrainingsByDivision(selectedDivision, page, 100) // Usar 100 por página para obtener más rápido
+      allTrainings = [...allTrainings, ...pageTrainings]
+      hasMore = pageTrainings.length === 100
+      page++
+    }
+    
+    setTrainings(allTrainings)
     setLoadingMoreTrainings(false)
   }
 
@@ -298,7 +321,7 @@ export default function DashboardPage() {
           attachments: trainingAttachments.length > 0 ? trainingAttachments : undefined,
         }
 
-        await saveTraining(updatedTraining)
+        await updateTraining(updatedTraining)
         setTrainings(trainings.map((t) => (t.id === editingTrainingId ? updatedTraining : t)))
 
         toast({
@@ -701,6 +724,45 @@ export default function DashboardPage() {
                             </div>
                           ))}
                         </div>
+                        {!showAllTrainings && hasMoreTrainings && (
+                          <div className="flex gap-2 mt-4 justify-center">
+                            <Button
+                              onClick={handleLoadMoreTrainings}
+                              variant="outline"
+                              disabled={loadingMoreTrainings}
+                              className="border-red-300 text-red-700 hover:bg-red-50 bg-transparent"
+                            >
+                              {loadingMoreTrainings ? "Cargando..." : "Cargar más entrenamientos"}
+                            </Button>
+                            <Button
+                              onClick={handleLoadAllTrainings}
+                              variant="outline"
+                              disabled={loadingMoreTrainings}
+                              className="border-red-600 text-red-700 hover:bg-red-50 font-semibold bg-transparent"
+                            >
+                              Ver todos los entrenamientos
+                            </Button>
+                          </div>
+                        )}
+                        {showAllTrainings && (
+                          <div className="flex justify-center mt-4">
+                            <Button
+                              onClick={async () => {
+                                setShowAllTrainings(false)
+                                setTrainingsPage(0)
+                                setHasMoreTrainings(true)
+                                // Recargar los datos iniciales
+                                const initialTrainings = await getTrainingsByDivision(selectedDivision, 0, ITEMS_PER_PAGE)
+                                setTrainings(initialTrainings)
+                                if (initialTrainings.length < ITEMS_PER_PAGE) setHasMoreTrainings(false)
+                              }}
+                              variant="outline"
+                              className="border-red-300 text-red-700 hover:bg-red-50"
+                            >
+                              Ver solo los últimos entrenamientos
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -31,6 +33,7 @@ import {
 } from "./actions"
 import type { Injury } from "@/lib/injuries"
 import type { Illness } from "@/lib/illnesses"
+import { InjuryDetailsView } from "@/components/injury-details-view"
 
 export default function PlayerInjuriesPage() {
   const router = useRouter()
@@ -42,6 +45,7 @@ export default function PlayerInjuriesPage() {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("lesiones")
   const [isInjured, setIsInjured] = useState(false)
+  const [viewingInjuryId, setViewingInjuryId] = useState<string | null>(null)
 
   const [existingInjuries, setExistingInjuries] = useState<Injury[]>([])
   const [existingIllnesses, setExistingIllnesses] = useState<Illness[]>([])
@@ -60,30 +64,30 @@ export default function PlayerInjuriesPage() {
     // Datos del evento lesional
     injuryDate: "",
     injuryTime: "",
-    context: "",
+    context: [] as string[],
     gameMinute: "",
-    surface: "",
+    surface: [] as string[],
 
     // Mecanismo de la lesión
-    mechanismType: "",
-    specificSituation: "",
+    mechanismType: [] as string[],
+    specificSituation: [] as string[],
 
     // Localización anatómica
-    anatomicalLocation: "",
-    affectedSide: "",
+    anatomicalLocation: [] as string[],
+    affectedSide: "" as string,
 
     // Tipo de lesión
-    injuryType: "",
+    injuryType: [],
     injuryTypeOther: "",
     clinicalDiagnosis: "",
 
     // Grado de severidad
-    severity: "",
+    severity: "" as string,
     daysAbsent: "",
 
     // Evolución
-    evolutionType: "",
-    treatment: "",
+    evolutionType: "" as string,
+    treatment: [] as string[],
 
     // Imágenes complementarias
     hasUltrasound: false,
@@ -91,15 +95,6 @@ export default function PlayerInjuriesPage() {
     hasXray: false,
     hasCt: false,
     imagingFindings: "",
-
-    // Alta y RTP
-    medicalDischargeDate: "",
-    progressiveReturnDate: "",
-    competitiveRtpDate: "",
-    rtpCriteriaClinical: false,
-    rtpCriteriaFunctional: false,
-    rtpCriteriaStrength: false,
-    rtpCriteriaGps: false,
 
     // Observaciones
     medicalObservations: "",
@@ -116,26 +111,13 @@ export default function PlayerInjuriesPage() {
     dolorCabeza: false,
     otroTipo: false,
 
-    // Sistema orgánico afectado
-    respiratorio: false,
-    dermatologico: false,
-    neurologico: false,
-    inmunologico: false,
-    metabolico: false,
-    trastornoReumatologico: false,
-    renalUrogenital: false,
-    hematologico: false,
-    cardiovascular: false,
-    psiquiatrica: false,
-    dental: false,
-    oftalmologico: false,
-    ambiental: false,
-    otroSistema: false,
-    otroSistemaDescripcion: "", // Changed from otroSistemaDesc
-    nuevaLesion: "", // Changed from nuevaEnfermedad
+    // Sistema orgánico afectado - ahora como arrays para múltiple selección
+    sistemasAfectados: [] as string[],
+    otroSistemaDescripcion: "",
+    nuevaLesion: "",
     diagnostico: "",
     otrosComentarios: "",
-    fechaRegresoJuego: "", // Changed from fechaRegresoAnterior
+    fechaRegresoJuego: "",
     attachments: [] as { fecha: string; descripcion: string }[],
   })
 
@@ -182,6 +164,17 @@ export default function PlayerInjuriesPage() {
       attachments: prev.attachments.filter((a) => a.id !== id),
     }))
   }
+
+  // Auto-complete responsibleDoctor with current user name
+  useEffect(() => {
+    if (user?.name && injuryData.responsibleDoctor === "") {
+      setInjuryData((prev) => ({
+        ...prev,
+        responsibleDoctor: user.name,
+      }))
+    }
+  }, [user?.name])
+
   // </CHANGE>
 
   const handleInjuryStatusChange = async (newStatus: boolean) => {
@@ -284,11 +277,39 @@ export default function PlayerInjuriesPage() {
   }, [params.id, router, toast]) // Added toast dependency
 
   const updateInjuryData = (field: string, value: any) => {
-    setInjuryData((prev) => ({ ...prev, [field]: value }))
+    setInjuryData((prev) => {
+      const current = prev[field as keyof typeof prev]
+      
+      // Si el campo es un array, agregar/remover del array
+      if (Array.isArray(current)) {
+        if (current.includes(value)) {
+          return { ...prev, [field]: current.filter((item) => item !== value) }
+        } else {
+          return { ...prev, [field]: [...current, value] }
+        }
+      }
+      
+      // Si no es array, comportamiento normal
+      return { ...prev, [field]: value }
+    })
   }
 
   const updateIllnessData = (field: string, value: any) => {
-    setIllnessData((prev) => ({ ...prev, [field]: value }))
+    setIllnessData((prev) => {
+      const current = prev[field as keyof typeof prev]
+      
+      // Si el campo es un array, agregar/remover del array
+      if (Array.isArray(current)) {
+        if (current.includes(value)) {
+          return { ...prev, [field]: current.filter((item) => item !== value) }
+        } else {
+          return { ...prev, [field]: [...current, value] }
+        }
+      }
+      
+      // Si no es array, comportamiento normal
+      return { ...prev, [field]: value }
+    })
   }
 
   const handleSaveStudy = async () => {
@@ -365,6 +386,7 @@ export default function PlayerInjuriesPage() {
 
     setSaving(true)
     console.log("[v0] Guardando lesión para jugador:", player.id)
+    console.log("[v0] injuryData:", injuryData)
 
     try {
       const result = await saveInjuryAction({
@@ -391,20 +413,20 @@ export default function PlayerInjuriesPage() {
       setInjuryData({
         injuryDate: "",
         injuryTime: "",
-        context: "",
+        context: [],
         gameMinute: "",
-        surface: "",
-        mechanismType: "",
-        specificSituation: "",
-        anatomicalLocation: "",
+        surface: [],
+        mechanismType: [],
+        specificSituation: [],
+        anatomicalLocation: [],
         affectedSide: "",
-        injuryType: "",
+        injuryType: [],
         injuryTypeOther: "",
         clinicalDiagnosis: "",
         severity: "",
         daysAbsent: "",
         evolutionType: "",
-        treatment: "",
+        treatment: [],
         hasUltrasound: false,
         hasMri: false,
         hasXray: false,
@@ -468,25 +490,12 @@ export default function PlayerInjuriesPage() {
         dolorEstomago: false,
         dolorCabeza: false,
         otroTipo: false,
-        respiratorio: false,
-        dermatologico: false,
-        neurologico: false,
-        inmunologico: false,
-        metabolico: false,
-        trastornoReumatologico: false,
-        renalUrogenital: false,
-        hematologico: false,
-        cardiovascular: false,
-        psiquiatrica: false,
-        dental: false,
-        oftalmologico: false,
-        ambiental: false,
-        otroSistema: false,
-        otroSistemaDescripcion: "", // Changed from otroSistemaDesc
-        nuevaLesion: "", // Changed from nuevaEnfermedad
+        sistemasAfectados: [],
+        otroSistemaDescripcion: "",
+        nuevaLesion: "",
         diagnostico: "",
         otrosComentarios: "",
-        fechaRegresoJuego: "", // Changed from fechaRegresoAnterior
+        fechaRegresoJuego: "",
         attachments: [],
       })
     } catch (error) {
@@ -587,33 +596,58 @@ export default function PlayerInjuriesPage() {
                                   {injury.injuryDate ? new Date(injury.injuryDate).toLocaleDateString() : "Sin fecha"}
                                 </p>
                               </div>
+                              <div className="flex gap-2 items-center">
+                                {injury.isDischarged && (
+                                  <Badge className="bg-green-100 text-green-800 border-green-300">
+                                    DADO DE ALTA
+                                  </Badge>
+                                )}
+                                {viewingInjuryId !== injury.id && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => setViewingInjuryId(injury.id)}
+                                  >
+                                    Ver Detalles
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="space-y-1 text-sm">
-                              {injury.anatomicalLocation && (
-                                <p>
-                                  <strong>Localización:</strong> {injury.anatomicalLocation}
-                                </p>
-                              )}
-                              {injury.injuryType && (
-                                <p>
-                                  <strong>Tipo:</strong> {injury.injuryType}
-                                </p>
-                              )}
-                              {injury.clinicalDiagnosis && (
-                                <p>
-                                  <strong>Diagnóstico:</strong> {injury.clinicalDiagnosis}
-                                </p>
-                              )}
-                              {injury.severity && (
-                                <p>
-                                  <strong>Severidad:</strong> {injury.severity}
-                                </p>
-                              )}
-                            </div>
+                            {viewingInjuryId !== injury.id && (
+                              <div className="space-y-1 text-sm">
+                                {injury.anatomicalLocation && Array.isArray(injury.anatomicalLocation) && (
+                                  <p>
+                                    <strong>Localización:</strong> {injury.anatomicalLocation.join(", ")}
+                                  </p>
+                                )}
+                                {injury.injuryType && Array.isArray(injury.injuryType) && (
+                                  <p>
+                                    <strong>Tipo:</strong> {injury.injuryType.join(", ")}
+                                  </p>
+                                )}
+                                {injury.clinicalDiagnosis && (
+                                  <p>
+                                    <strong>Diagnóstico:</strong> {injury.clinicalDiagnosis}
+                                  </p>
+                                )}
+                                {injury.severity && (
+                                  <p>
+                                    <strong>Severidad:</strong> {injury.severity}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </CardContent>
                     </Card>
+                  )}
+                  {viewingInjuryId && existingInjuries.find((i) => i.id === viewingInjuryId) && (
+                    <InjuryDetailsView
+                      injury={existingInjuries.find((i) => i.id === viewingInjuryId)!}
+                      onClose={() => setViewingInjuryId(null)}
+                      canEdit={canEdit}
+                    />
                   )}
                   {/* Formulario de nueva lesión */}
                   <Card>
@@ -684,10 +718,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="context-entrenamiento"
-                                checked={injuryData.context === "entrenamiento"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("context", checked ? "entrenamiento" : "")
-                                }
+                                checked={injuryData.context.includes("entrenamiento")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("context", "entrenamiento")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="context-entrenamiento" className="font-normal">
@@ -697,10 +731,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="context-partido-oficial"
-                                checked={injuryData.context === "partido_oficial"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("context", checked ? "partido_oficial" : "")
-                                }
+                                checked={injuryData.context.includes("partido_oficial")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("context", "partido_oficial")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="context-partido-oficial" className="font-normal">
@@ -710,10 +744,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="context-partido-amistoso"
-                                checked={injuryData.context === "partido_amistoso"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("context", checked ? "partido_amistoso" : "")
-                                }
+                                checked={injuryData.context.includes("partido_amistoso")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("context", "partido_amistoso")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="context-partido-amistoso" className="font-normal">
@@ -739,10 +773,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="surface-natural"
-                                checked={injuryData.surface === "cesped_natural"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("surface", checked ? "cesped_natural" : "")
-                                }
+                                checked={injuryData.surface.includes("cesped_natural")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("surface", "cesped_natural")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="surface-natural" className="font-normal">
@@ -752,10 +786,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="surface-sintetico"
-                                checked={injuryData.surface === "cesped_sintetico"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("surface", checked ? "cesped_sintetico" : "")
-                                }
+                                checked={injuryData.surface.includes("cesped_sintetico")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("surface", "cesped_sintetico")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="surface-sintetico" className="font-normal">
@@ -765,8 +799,10 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="surface-otra"
-                                checked={injuryData.surface === "otra"}
-                                onCheckedChange={(checked) => updateInjuryData("surface", checked ? "otra" : "")}
+                                checked={injuryData.surface.includes("otra")}
+                                onCheckedChange={(checked) => {
+                                  updateInjuryData("surface", "otra")
+                                }}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="surface-otra" className="font-normal">
@@ -788,10 +824,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="mechanism-contacto"
-                                checked={injuryData.mechanismType === "contacto"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("mechanismType", checked ? "contacto" : "")
-                                }
+                                checked={injuryData.mechanismType.includes("contacto")}
+                                onCheckedChange={() => updateInjuryData("mechanismType", "contacto")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="mechanism-contacto" className="font-normal">
@@ -801,10 +835,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="mechanism-no-contacto"
-                                checked={injuryData.mechanismType === "no_contacto"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("mechanismType", checked ? "no_contacto" : "")
-                                }
+                                checked={injuryData.mechanismType.includes("no_contacto")}
+                                onCheckedChange={() => updateInjuryData("mechanismType", "no_contacto")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="mechanism-no-contacto" className="font-normal">
@@ -814,10 +846,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="mechanism-sobrecarga"
-                                checked={injuryData.mechanismType === "sobrecarga"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("mechanismType", checked ? "sobrecarga" : "")
-                                }
+                                checked={injuryData.mechanismType.includes("sobrecarga")}
+                                onCheckedChange={() => updateInjuryData("mechanismType", "sobrecarga")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="mechanism-sobrecarga" className="font-normal">
@@ -827,10 +857,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="mechanism-trauma"
-                                checked={injuryData.mechanismType === "trauma_indirecto"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("mechanismType", checked ? "trauma_indirecto" : "")
-                                }
+                                checked={injuryData.mechanismType.includes("trauma_indirecto")}
+                                onCheckedChange={() => updateInjuryData("mechanismType", "trauma_indirecto")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="mechanism-trauma" className="font-normal">
@@ -846,10 +874,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-sprint"
-                                checked={injuryData.specificSituation === "sprint"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "sprint" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("sprint")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "sprint")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-sprint" className="font-normal">
@@ -859,10 +885,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-cambio"
-                                checked={injuryData.specificSituation === "cambio_direccion"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "cambio_direccion" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("cambio_direccion")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "cambio_direccion")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-cambio" className="font-normal">
@@ -872,10 +896,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-salto"
-                                checked={injuryData.specificSituation === "salto_caida"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "salto_caida" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("salto_caida")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "salto_caida")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-salto" className="font-normal">
@@ -885,10 +907,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-golpe"
-                                checked={injuryData.specificSituation === "golpe_choque"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "golpe_choque" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("golpe_choque")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "golpe_choque")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-golpe" className="font-normal">
@@ -898,10 +918,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-disparo"
-                                checked={injuryData.specificSituation === "disparo"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "disparo" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("disparo")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "disparo")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-disparo" className="font-normal">
@@ -911,10 +929,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="situation-aceleracion"
-                                checked={injuryData.specificSituation === "aceleracion_desaceleracion"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("specificSituation", checked ? "aceleracion_desaceleracion" : "")
-                                }
+                                checked={injuryData.specificSituation.includes("aceleracion_desaceleracion")}
+                                onCheckedChange={() => updateInjuryData("specificSituation", "aceleracion_desaceleracion")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="situation-aceleracion" className="font-normal">
@@ -944,10 +960,8 @@ export default function PlayerInjuriesPage() {
                                 <div key={location} className="flex items-center space-x-2">
                                   <Checkbox
                                     id={`loc-${location}`}
-                                    checked={injuryData.anatomicalLocation === location}
-                                    onCheckedChange={(checked) =>
-                                      updateInjuryData("anatomicalLocation", checked ? location : "")
-                                    }
+                                    checked={injuryData.anatomicalLocation.includes(location)}
+                                    onCheckedChange={() => updateInjuryData("anatomicalLocation", location)}
                                     disabled={!canEdit}
                                   />
                                   <Label htmlFor={`loc-${location}`} className="font-normal text-sm">
@@ -965,10 +979,8 @@ export default function PlayerInjuriesPage() {
                                 <div key={location} className="flex items-center space-x-2">
                                   <Checkbox
                                     id={`loc-${location}`}
-                                    checked={injuryData.anatomicalLocation === location}
-                                    onCheckedChange={(checked) =>
-                                      updateInjuryData("anatomicalLocation", checked ? location : "")
-                                    }
+                                    checked={injuryData.anatomicalLocation.includes(location)}
+                                    onCheckedChange={() => updateInjuryData("anatomicalLocation", location)}
                                     disabled={!canEdit}
                                   />
                                   <Label htmlFor={`loc-${location}`} className="font-normal text-sm">
@@ -994,10 +1006,8 @@ export default function PlayerInjuriesPage() {
                                 <div key={location} className="flex items-center space-x-2">
                                   <Checkbox
                                     id={`loc-${location}`}
-                                    checked={injuryData.anatomicalLocation === location}
-                                    onCheckedChange={(checked) =>
-                                      updateInjuryData("anatomicalLocation", checked ? location : "")
-                                    }
+                                    checked={injuryData.anatomicalLocation.includes(location)}
+                                    onCheckedChange={() => updateInjuryData("anatomicalLocation", location)}
                                     disabled={!canEdit}
                                   />
                                   <Label htmlFor={`loc-${location}`} className="font-normal text-sm">
@@ -1012,41 +1022,47 @@ export default function PlayerInjuriesPage() {
                             <Label>Lado afectado</Label>
                             <div className="flex gap-4">
                               <div className="flex items-center space-x-2">
-                                <Checkbox
+                                <input
+                                  type="radio"
                                   id="side-derecho"
+                                  name="affectedSide"
+                                  value="derecho"
                                   checked={injuryData.affectedSide === "derecho"}
-                                  onCheckedChange={(checked) =>
-                                    updateInjuryData("affectedSide", checked ? "derecho" : "")
-                                  }
+                                  onChange={() => updateInjuryData("affectedSide", "derecho")}
                                   disabled={!canEdit}
+                                  className="w-4 h-4"
                                 />
-                                <Label htmlFor="side-derecho" className="font-normal">
+                                <Label htmlFor="side-derecho" className="font-normal cursor-pointer">
                                   Derecho
                                 </Label>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <Checkbox
+                                <input
+                                  type="radio"
                                   id="side-izquierdo"
+                                  name="affectedSide"
+                                  value="izquierdo"
                                   checked={injuryData.affectedSide === "izquierdo"}
-                                  onCheckedChange={(checked) =>
-                                    updateInjuryData("affectedSide", checked ? "izquierdo" : "")
-                                  }
+                                  onChange={() => updateInjuryData("affectedSide", "izquierdo")}
                                   disabled={!canEdit}
+                                  className="w-4 h-4"
                                 />
-                                <Label htmlFor="side-izquierdo" className="font-normal">
+                                <Label htmlFor="side-izquierdo" className="font-normal cursor-pointer">
                                   Izquierdo
                                 </Label>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <Checkbox
+                                <input
+                                  type="radio"
                                   id="side-bilateral"
+                                  name="affectedSide"
+                                  value="bilateral"
                                   checked={injuryData.affectedSide === "bilateral"}
-                                  onCheckedChange={(checked) =>
-                                    updateInjuryData("affectedSide", checked ? "bilateral" : "")
-                                  }
+                                  onChange={() => updateInjuryData("affectedSide", "bilateral")}
                                   disabled={!canEdit}
+                                  className="w-4 h-4"
                                 />
-                                <Label htmlFor="side-bilateral" className="font-normal">
+                                <Label htmlFor="side-bilateral" className="font-normal cursor-pointer">
                                   Bilateral
                                 </Label>
                               </div>
@@ -1074,8 +1090,8 @@ export default function PlayerInjuriesPage() {
                             <div key={value} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`injury-type-${value}`}
-                                checked={injuryData.injuryType === value}
-                                onCheckedChange={(checked) => updateInjuryData("injuryType", checked ? value : "")}
+                                checked={injuryData.injuryType.includes(value)}
+                                onCheckedChange={() => updateInjuryData("injuryType", value)}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor={`injury-type-${value}`} className="font-normal">
@@ -1085,7 +1101,7 @@ export default function PlayerInjuriesPage() {
                           ))}
                         </div>
 
-                        {injuryData.injuryType === "otra" && (
+                        {injuryData.injuryType.includes("otra") && (
                           <div className="space-y-2">
                             <Label>Especificar otra lesión</Label>
                             <Input
@@ -1121,7 +1137,7 @@ export default function PlayerInjuriesPage() {
                             <Checkbox
                               id="severity-leve"
                               checked={injuryData.severity === "leve"}
-                              onCheckedChange={(checked) => updateInjuryData("severity", checked ? "leve" : "")}
+                              onCheckedChange={() => updateInjuryData("severity", "leve")}
                               disabled={!canEdit}
                             />
                             <Label htmlFor="severity-leve" className="font-normal">
@@ -1132,7 +1148,7 @@ export default function PlayerInjuriesPage() {
                             <Checkbox
                               id="severity-moderada"
                               checked={injuryData.severity === "moderada"}
-                              onCheckedChange={(checked) => updateInjuryData("severity", checked ? "moderada" : "")}
+                              onCheckedChange={() => updateInjuryData("severity", "moderada")}
                               disabled={!canEdit}
                             />
                             <Label htmlFor="severity-moderada" className="font-normal">
@@ -1143,7 +1159,7 @@ export default function PlayerInjuriesPage() {
                             <Checkbox
                               id="severity-severa"
                               checked={injuryData.severity === "severa"}
-                              onCheckedChange={(checked) => updateInjuryData("severity", checked ? "severa" : "")}
+                              onCheckedChange={() => updateInjuryData("severity", "severa")}
                               disabled={!canEdit}
                             />
                             <Label htmlFor="severity-severa" className="font-normal">
@@ -1176,7 +1192,7 @@ export default function PlayerInjuriesPage() {
                               <Checkbox
                                 id="evolution-nueva"
                                 checked={injuryData.evolutionType === "nueva"}
-                                onCheckedChange={(checked) => updateInjuryData("evolutionType", checked ? "nueva" : "")}
+                                onCheckedChange={() => updateInjuryData("evolutionType", "nueva")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="evolution-nueva" className="font-normal">
@@ -1187,9 +1203,7 @@ export default function PlayerInjuriesPage() {
                               <Checkbox
                                 id="evolution-recaida"
                                 checked={injuryData.evolutionType === "recaida"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("evolutionType", checked ? "recaida" : "")
-                                }
+                                onCheckedChange={() => updateInjuryData("evolutionType", "recaida")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="evolution-recaida" className="font-normal">
@@ -1200,9 +1214,7 @@ export default function PlayerInjuriesPage() {
                               <Checkbox
                                 id="evolution-recidiva"
                                 checked={injuryData.evolutionType === "recidiva"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("evolutionType", checked ? "recidiva" : "")
-                                }
+                                onCheckedChange={() => updateInjuryData("evolutionType", "recidiva")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="evolution-recidiva" className="font-normal">
@@ -1324,95 +1336,9 @@ export default function PlayerInjuriesPage() {
 
                       <Separator />
 
-                      {/* Sección 9: Alta y Return to Play */}
+                      {/* Sección 9: Observaciones Médicas */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold border-b pb-2">9. ALTA Y RETURN TO PLAY (RTP)</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label>Fecha de alta médica</Label>
-                            <Input
-                              type="date"
-                              value={injuryData.medicalDischargeDate}
-                              onChange={(e) => updateInjuryData("medicalDischargeDate", e.target.value)}
-                              disabled={!canEdit}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Fecha de reintegro progresivo</Label>
-                            <Input
-                              type="date"
-                              value={injuryData.progressiveReturnDate}
-                              onChange={(e) => updateInjuryData("progressiveReturnDate", e.target.value)}
-                              disabled={!canEdit}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Fecha de RTP competitivo</Label>
-                            <Input
-                              type="date"
-                              value={injuryData.competitiveRtpDate}
-                              onChange={(e) => updateInjuryData("competitiveRtpDate", e.target.value)}
-                              disabled={!canEdit}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Criterios de RTP cumplidos</Label>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="rtp-clinical"
-                                checked={injuryData.rtpCriteriaClinical}
-                                onCheckedChange={(checked) => updateInjuryData("rtpCriteriaClinical", checked)}
-                                disabled={!canEdit}
-                              />
-                              <Label htmlFor="rtp-clinical" className="font-normal">
-                                Clínicos
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="rtp-functional"
-                                checked={injuryData.rtpCriteriaFunctional}
-                                onCheckedChange={(checked) => updateInjuryData("rtpCriteriaFunctional", checked)}
-                                disabled={!canEdit}
-                              />
-                              <Label htmlFor="rtp-functional" className="font-normal">
-                                Funcionales
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="rtp-strength"
-                                checked={injuryData.rtpCriteriaStrength}
-                                onCheckedChange={(checked) => updateInjuryData("rtpCriteriaStrength", checked)}
-                                disabled={!canEdit}
-                              />
-                              <Label htmlFor="rtp-strength" className="font-normal">
-                                Fuerza / Potencia
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="rtp-gps"
-                                checked={injuryData.rtpCriteriaGps}
-                                onCheckedChange={(checked) => updateInjuryData("rtpCriteriaGps", checked)}
-                                disabled={!canEdit}
-                              />
-                              <Label htmlFor="rtp-gps" className="font-normal">
-                                Campo / GPS
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Separator />
-
-                      {/* Sección 10: Observaciones Médicas */}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold border-b pb-2">10. OBSERVACIONES MÉDICAS</h3>
+                        <h3 className="text-lg font-semibold border-b pb-2">9. OBSERVACIONES MÉDICAS</h3>
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Observaciones</Label>

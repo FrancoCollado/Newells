@@ -193,7 +193,12 @@ function InjuredPlayersContent() {
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                           {injury.playerDivision}
                         </Badge>
-                        {injury.severity && (
+                        {injury.isDischarged && (
+                          <Badge className="bg-green-100 text-green-800 border-green-300">
+                            DADO DE ALTA
+                          </Badge>
+                        )}
+                        {injury.severity && !injury.isDischarged && (
                           <Badge variant="outline" className={getSeverityColor(injury.severity)}>
                             {injury.severity}
                           </Badge>
@@ -227,10 +232,10 @@ function InjuredPlayersContent() {
                           <p className="text-base">{injury.daysAbsent} días</p>
                         </div>
                       )}
-                      {injury.treatment && (
+                      {injury.treatment && injury.treatment.length > 0 && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Tratamiento</p>
-                          <p className="text-base capitalize">{injury.treatment.replace("_", " ")}</p>
+                          <p className="text-base capitalize">{injury.treatment.map((t: string) => t.replace("_", " ")).join(", ")}</p>
                         </div>
                       )}
                     </div>
@@ -245,7 +250,7 @@ function InjuredPlayersContent() {
 
                     {/* Acciones */}
                     <div className="flex gap-2 pt-2">
-                      {canManageEvolutions && (
+                      {canManageEvolutions && !injury.isDischarged && (
                         <>
                           <Button
                             onClick={() => {
