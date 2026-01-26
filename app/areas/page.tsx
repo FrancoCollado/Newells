@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { getCurrentUser, type User } from "@/lib/auth"
+import { getCurrentUser, logout, type User } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
+import { ProfessionalLayout } from "@/components/professional-layout"
 import {
   ArrowLeft,
   LogOut,
@@ -276,7 +277,8 @@ export default function AreasPage() {
     setLoadingMoreReports(false)
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout()
     router.push("/login")
   }
 
@@ -318,35 +320,8 @@ export default function AreasPage() {
   const canViewAll = canViewAllAreas(user.role)
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/dashboard")}
-                className="text-white hover:bg-white/20"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Áreas Profesionales</h1>
-                <p className="text-sm text-red-100">Gestión integral del cuerpo profesional</p>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-white/20">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
+    <ProfessionalLayout user={user} onLogout={handleLogout}>
+      <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
           <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-muted/50">
             {areas.map((area) => (
               <TabsTrigger 
@@ -752,7 +727,6 @@ export default function AreasPage() {
             </TabsContent>
           ))}
         </Tabs>
-      </main>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
@@ -775,6 +749,6 @@ export default function AreasPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </ProfessionalLayout>
   )
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
-import { getCurrentUser, type User } from "@/lib/auth"
+import { getCurrentUser, logout, type User } from "@/lib/auth"
 import {
   getPlayerById,
   getDivisionLabel,
@@ -15,6 +15,7 @@ import {
 import { getReportsByPlayerId, type Report } from "@/lib/reports"
 import { ReportCard } from "@/components/report-card"
 import { Button } from "@/components/ui/button"
+import { ProfessionalLayout } from "@/components/professional-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
@@ -334,41 +335,27 @@ export default function PlayerDetailPage() {
 
   const professionalArea = getAreaFromRole(user?.role)
 
+  const handleLogout = async () => {
+    await logout()
+    router.push("/login")
+  }
+
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push("/dashboard")}
-                  className="text-white hover:bg-white/20"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver al Inicio
-                </Button>
-                <Button variant="ghost" onClick={() => router.push("/areas")} className="text-white hover:bg-white/20">
-                  <Activity className="h-4 w-4 mr-2" />
-                  Áreas
-                </Button>
-              </div>
-              <Button
+      <ProfessionalLayout user={user} onLogout={handleLogout}>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">Perfil del Jugador</h1>
+            <Button
                 variant="ghost"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="text-white hover:bg-white/20"
+                className="hover:bg-muted"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
                 {isRefreshing ? "Actualizando..." : "Actualizar Estadísticas"}
-              </Button>
-            </div>
-            <h1 className="text-2xl font-bold mt-2">Perfil del Jugador</h1>
+            </Button>
           </div>
-        </header>
 
-        <main className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-1">
               <Card>
@@ -691,7 +678,6 @@ export default function PlayerDetailPage() {
                </Tabs>
             </div>
           </div>
-        </main>
           
           {showIndicesModal && (
           <PlayerIndicesManager
@@ -755,7 +741,7 @@ export default function PlayerDetailPage() {
             </div>
           </div>
         )}
-      </div>
+      </ProfessionalLayout>
     </AuthGuard>
   )
 }

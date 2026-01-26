@@ -44,6 +44,7 @@ import { IndicesManager } from "@/components/indices-manager"
 import { CaptacionManager } from "@/components/captacion-manager"
 import { LeagueTypeFilter } from "@/components/league-type-filter"
 import { ReadaptacionManager } from "@/components/readaptacion-manager"
+import { ProfessionalLayout } from "@/components/professional-layout"
 
 const Loading = () => null;
 
@@ -360,90 +361,17 @@ export default function DashboardPage() {
     { value: "arqueros", label: "Arqueros" },
   ]
 
-  const canManageContent = hasPermission(user?.role, "manage_matches") || hasPermission(user?.role, "manage_trainings")
-  const canViewTrainings = hasPermission(user?.role, "manage_trainings") || hasPermission(user?.role, "manage_matches")
-  const canViewIndices = hasPermission(user?.role, "view_indices")
+  const canManageContent = user && (hasPermission(user.role, "manage_matches") || hasPermission(user.role, "manage_trainings"))
+  const canViewTrainings = user && (hasPermission(user.role, "manage_trainings") || hasPermission(user.role, "manage_matches"))
+  const canViewIndices = user && hasPermission(user.role, "view_indices")
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-gradient-to-r from-red-700 to-black text-white">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Newell's Old Boys</h1>
-              <p className="text-sm text-red-100">Sistema de Gestión Deportiva</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button
-                  variant="ghost"
-                  onClick={() => router.push("/dashboard/messages")}
-                  className="text-white hover:bg-white/20"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Mensajes
-              </Button>
-              {hasPermission(user?.role, "access_manager_panel") && (
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push("/manager")}
-                  className="text-white hover:bg-white/20"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Gestión
-                </Button>
-              )}
-              {hasPermission(user?.role, "view_injured_players") && (
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push("/injured-players")}
-                  className="text-white hover:bg-white/20"
-                >
-                  <Stethoscope className="h-4 w-4 mr-2" />
-                  Lesiones
-                </Button>
-              )}
-              <Button variant="ghost" onClick={() => router.push("/areas")} className="text-white hover:bg-white/20">
-                <Activity className="h-4 w-4 mr-2" />
-                Áreas
-              </Button>
-              {(user?.role === "captacion" || user?.role === "dirigente") && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowCaptacionModal(true)}
-                    className="text-white hover:bg-white/20"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    Captación
-                  </Button>
-              )}
-
-              {/* NUEVO BOTÓN DE READAPTACIÓN */}
-              <Button
-                variant="ghost"
-                onClick={() => setShowReadaptacionModal(true)} // <-- Esto abre el modal
-                className="text-white hover:bg-white/20"
-              >
-                <HeartPulse className="h-4 w-4 mr-2" />
-                Readaptación
-              </Button>
-
-              <div className="text-right">
-                <p className="font-semibold">{user?.name}</p>
-                <Badge variant="secondary" className="bg-white/20 hover:bg-white/30">
-                  {getRoleLabel(user?.role)}
-                </Badge>
-              </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-white/20">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+    <ProfessionalLayout
+      user={user}
+      onLogout={handleLogout}
+      onOpenCaptacion={() => setShowCaptacionModal(true)}
+      onOpenReadaptacion={() => setShowReadaptacionModal(true)}
+    >
         {loading && (
           <div className="flex h-screen items-center justify-center">
             <Loader2 className="animate-spin h-8 w-8 text-red-700" />
@@ -860,7 +788,7 @@ export default function DashboardPage() {
                 )}
 
                 <PlayersList 
-                  division={selectedDivision === "all" ? "todas" : selectedDivision} 
+                  division={selectedDivision === "all" ? undefined : selectedDivision} 
                   userRole={user.role} 
                   leagueType={selectedLeagueType} 
                 />
@@ -868,7 +796,6 @@ export default function DashboardPage() {
             </Card>
           </>
         )}
-      </main>
 
       {showIndicesModal && selectedDivision !== "all" && user && (
         <IndicesManager
@@ -892,7 +819,7 @@ export default function DashboardPage() {
           onClose={() => setShowReadaptacionModal(false)}
         />
       )}
-    </div>
+    </ProfessionalLayout>
   )
 }
 

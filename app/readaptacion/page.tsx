@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { getCurrentUser, type User } from "@/lib/auth"
+import { getCurrentUser, logout, type User } from "@/lib/auth"
+import { ProfessionalLayout } from "@/components/professional-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -124,27 +125,22 @@ export default function ReadaptacionPage() {
     init()
   }, [])
 
+  const handleLogout = async () => {
+    await logout()
+    router.push("/login")
+  }
+
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-red-700" /></div>
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-gradient-to-r from-red-700 to-black text-white p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => router.push("/dashboard")} className="text-white hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Dashboard
-            </Button>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <HeartPulse className="h-6 w-6" /> Readaptación
-            </h1>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => router.push("/login")} className="hover:bg-white/20">
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+    <ProfessionalLayout user={user} onLogout={handleLogout}>
+      <div className="mb-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <HeartPulse className="h-6 w-6" /> Readaptación
+          </h1>
+      </div>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -208,7 +204,7 @@ export default function ReadaptacionPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       {/* Dialogo de eliminación */}
       <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
@@ -224,6 +220,6 @@ export default function ReadaptacionPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </ProfessionalLayout>
   )
 }
