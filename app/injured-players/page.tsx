@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ArrowLeft, Loader2, CheckCircle, FileText, Plus } from "lucide-react"
 import { hasPermission } from "@/lib/rbac"
 import { useToast } from "@/hooks/use-toast"
-import { getActiveInjuriesAction, addEvolutionAction, dischargeInjuryAction, getAllInjuriesAction } from "./actions"
+import { getActiveInjuriesAction, addEvolutionAction, dischargeInjuryAction } from "./actions"
 import type { Injury } from "@/lib/injuries"
 
 type InjuryWithPlayer = Injury & { playerName: string; playerDivision: string }
@@ -54,9 +54,9 @@ function InjuredPlayersContent() {
 
   const loadInjuries = async () => {
     try {
-      const data = await getAllInjuriesAction()
+      const data = await getActiveInjuriesAction()
       setInjuries(data)
-      console.log("[v0] Todas las lesiones cargadas:", data.length)
+      console.log("[v0] Lesiones activas cargadas:", data.length)
     } catch (error) {
       console.error("[v0] Error al cargar lesiones:", error)
       toast({
