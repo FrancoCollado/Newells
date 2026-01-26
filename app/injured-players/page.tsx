@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ArrowLeft, Loader2, CheckCircle, FileText, Plus } from "lucide-react"
 import { hasPermission } from "@/lib/rbac"
 import { useToast } from "@/hooks/use-toast"
-import { getActiveInjuriesAction, addEvolutionAction, dischargeInjuryAction } from "./actions"
+import { getActiveInjuriesAction, addEvolutionAction, dischargeInjuryAction, getAllInjuriesAction } from "./actions"
 import type { Injury } from "@/lib/injuries"
 
 type InjuryWithPlayer = Injury & { playerName: string; playerDivision: string }
@@ -54,9 +54,9 @@ function InjuredPlayersContent() {
 
   const loadInjuries = async () => {
     try {
-      const data = await getActiveInjuriesAction()
+      const data = await getAllInjuriesAction()
       setInjuries(data)
-      console.log("[v0] Lesiones activas cargadas:", data.length)
+      console.log("[v0] Todas las lesiones cargadas:", data.length)
     } catch (error) {
       console.error("[v0] Error al cargar lesiones:", error)
       toast({
@@ -204,7 +204,12 @@ function InjuredPlayersContent() {
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                           {injury.playerDivision}
                         </Badge>
-                        {injury.severity && (
+                        {injury.isDischarged && (
+                          <Badge className="bg-green-100 text-green-800 border-green-300">
+                            DADO DE ALTA
+                          </Badge>
+                        )}
+                        {injury.severity && !injury.isDischarged && (
                           <Badge variant="outline" className={getSeverityColor(injury.severity)}>
                             {injury.severity}
                           </Badge>
@@ -256,7 +261,7 @@ function InjuredPlayersContent() {
 
                     {/* Acciones */}
                     <div className="flex gap-2 pt-2">
-                      {canManageEvolutions && (
+                      {canManageEvolutions && !injury.isDischarged && (
                         <>
                           <Button
                             onClick={() => {

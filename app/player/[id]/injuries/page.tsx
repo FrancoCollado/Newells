@@ -1,5 +1,7 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -31,6 +33,7 @@ import {
 } from "./actions"
 import type { Injury } from "@/lib/injuries"
 import type { Illness } from "@/lib/illnesses"
+import { InjuryDetailsView } from "@/components/injury-details-view"
 
 export default function PlayerInjuriesPage() {
   const router = useRouter()
@@ -42,6 +45,7 @@ export default function PlayerInjuriesPage() {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("lesiones")
   const [isInjured, setIsInjured] = useState(false)
+  const [viewingInjuryId, setViewingInjuryId] = useState<string | null>(null)
 
   const [existingInjuries, setExistingInjuries] = useState<Injury[]>([])
   const [existingIllnesses, setExistingIllnesses] = useState<Illness[]>([])
@@ -382,6 +386,7 @@ export default function PlayerInjuriesPage() {
 
     setSaving(true)
     console.log("[v0] Guardando lesión para jugador:", player.id)
+    console.log("[v0] injuryData:", injuryData)
 
     try {
       const result = await saveInjuryAction({
@@ -591,33 +596,58 @@ export default function PlayerInjuriesPage() {
                                   {injury.injuryDate ? new Date(injury.injuryDate).toLocaleDateString() : "Sin fecha"}
                                 </p>
                               </div>
+                              <div className="flex gap-2 items-center">
+                                {injury.isDischarged && (
+                                  <Badge className="bg-green-100 text-green-800 border-green-300">
+                                    DADO DE ALTA
+                                  </Badge>
+                                )}
+                                {viewingInjuryId !== injury.id && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => setViewingInjuryId(injury.id)}
+                                  >
+                                    Ver Detalles
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="space-y-1 text-sm">
-                              {injury.anatomicalLocation && (
-                                <p>
-                                  <strong>Localización:</strong> {injury.anatomicalLocation}
-                                </p>
-                              )}
-                              {injury.injuryType && (
-                                <p>
-                                  <strong>Tipo:</strong> {injury.injuryType}
-                                </p>
-                              )}
-                              {injury.clinicalDiagnosis && (
-                                <p>
-                                  <strong>Diagnóstico:</strong> {injury.clinicalDiagnosis}
-                                </p>
-                              )}
-                              {injury.severity && (
-                                <p>
-                                  <strong>Severidad:</strong> {injury.severity}
-                                </p>
-                              )}
-                            </div>
+                            {viewingInjuryId !== injury.id && (
+                              <div className="space-y-1 text-sm">
+                                {injury.anatomicalLocation && Array.isArray(injury.anatomicalLocation) && (
+                                  <p>
+                                    <strong>Localización:</strong> {injury.anatomicalLocation.join(", ")}
+                                  </p>
+                                )}
+                                {injury.injuryType && Array.isArray(injury.injuryType) && (
+                                  <p>
+                                    <strong>Tipo:</strong> {injury.injuryType.join(", ")}
+                                  </p>
+                                )}
+                                {injury.clinicalDiagnosis && (
+                                  <p>
+                                    <strong>Diagnóstico:</strong> {injury.clinicalDiagnosis}
+                                  </p>
+                                )}
+                                {injury.severity && (
+                                  <p>
+                                    <strong>Severidad:</strong> {injury.severity}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </CardContent>
                     </Card>
+                  )}
+                  {viewingInjuryId && existingInjuries.find((i) => i.id === viewingInjuryId) && (
+                    <InjuryDetailsView
+                      injury={existingInjuries.find((i) => i.id === viewingInjuryId)!}
+                      onClose={() => setViewingInjuryId(null)}
+                      canEdit={canEdit}
+                    />
                   )}
                   {/* Formulario de nueva lesión */}
                   <Card>
