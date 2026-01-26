@@ -1,26 +1,19 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
+import type { IndiceType, IndiceSubtype, Indice } from "@/lib/indices"
+import { indiceTypeLabels, indiceSubtypeLabels } from "@/lib/indices"
+import { getIndicesByDivisionAction, createIndiceAction, deleteIndiceAction, uploadIndiceFileAction } from "@/app/dashboard/indices-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Upload as LucideUpload, Download as LucideDownload, Trash2 as LucideTrash2, Loader2 as LucideLoader2, X as LucideX } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import { BarChart3, Upload, FileText, Download, Trash2, Loader2, X, Activity, Heart, TrendingUp } from "lucide-react"
-import {
-  type Indice,
-  type IndiceType,
-  type IndiceSubtype,
-  getIndicesByDivision,
-  createIndice,
-  deleteIndice,
-  indiceTypeLabels,
-  indiceSubtypeLabels,
-} from "@/lib/indices"
+import { BarChart3, Activity, Heart, TrendingUp } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 interface IndicesManagerProps {
   division: string
@@ -37,6 +30,7 @@ const indiceTypeIcons: Record<IndiceType, React.ReactNode> = {
   WELLNESS: <BarChart3 className="h-4 w-4" />,
   UNIDAD_ARBITRARIA: <BarChart3 className="h-4 w-4" />,
   ONDULACIONES: <Activity className="h-4 w-4" />,
+  EVALUACIONES: <BarChart3 className="h-4 w-4" />,
 }
 
 export function IndicesManager({ division, userName, userId, onClose, canEdit = true }: IndicesManagerProps) {
@@ -45,12 +39,12 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
   const [selectedSubtype, setSelectedSubtype] = useState<IndiceSubtype | undefined>(undefined)
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [observations, setObservations] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]) // Declared selectedFiles variable
   const [indices, setIndices] = useState<Indice[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  const indiceTypes: IndiceType[] = ["GPS", "RPE", "PAUTAS_FUERZA", "WELLNESS", "UNIDAD_ARBITRARIA", "ONDULACIONES"]
+  const indiceTypes: IndiceType[] = ["GPS", "RPE", "PAUTAS_FUERZA", "WELLNESS", "UNIDAD_ARBITRARIA", "ONDULACIONES", "EVALUACIONES"]
 
   useEffect(() => {
     if (selectedType) {
@@ -61,59 +55,97 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
   const loadIndices = async () => {
     if (!selectedType) return
     setLoading(true)
-    const data = await getIndicesByDivision(division, selectedType, selectedSubtype)
+    const data = await getIndicesByDivisionAction(division, selectedType, selectedSubtype)
     setIndices(data)
     setLoading(false)
   }
 
   const handleUpload = async () => {
-    if (!selectedType) return
+    console.log("[v0] handleUpload iniciado")
+    if (!selectedType) {
+      console.log("[v0] No selectedType")
+      return
+    }
 
-    if (!observations.trim() && !selectedFile) {
+    if (!observations.trim() && selectedFiles.length === 0) {
+      console.log("[v0] Sin observaciones ni archivos")
       toast({
         title: "Error",
-        description: "Debe agregar observaciones o un archivo",
+        description: "Debe agregar observaciones o al menos un archivo",
         variant: "destructive",
       })
       return
     }
 
+    console.log("[v0] Iniciando upload, archivos:", selectedFiles.length)
     setUploading(true)
 
-    const result = await createIndice(
-      division,
-      selectedType,
-      selectedSubtype,
-      observations,
-      selectedFile,
-      userName,
-      userId,
-    )
+    // Subir múltiples archivos
+    for (const file of selectedFiles) {
+      try {
+        console.log("[v0] Procesando archivo:", file.name)
+        // 1. Subir archivo al storage mediante Server Action
+        let fileUrl: string | null = null
+        let fileName: string | null = null
 
-    if (result.success) {
-      toast({
-        title: "Éxito",
-        description: "El índice se guardó correctamente",
-      })
-      setObservations("")
-      setSelectedFile(null)
-      setShowUploadForm(false)
-      loadIndices()
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "No se pudo guardar el índice",
-        variant: "destructive",
-      })
+        if (file) {
+          console.log("[v0] Llamando uploadIndiceFileAction para:", file.name)
+          const uploadResult = await uploadIndiceFileAction(file)
+          console.log("[v0] Upload result:", uploadResult)
+          fileUrl = uploadResult.fileUrl
+          fileName = uploadResult.fileName
+        }
+
+        // 2. Guardar el índice en la base de datos usando Server Action
+        console.log("[v0] Llamando createIndiceAction")
+        const result = await createIndiceAction(
+          division,
+          selectedType,
+          selectedSubtype,
+          observations,
+          fileUrl,
+          fileName,
+          userName,
+        )
+
+        console.log("[v0] createIndiceAction result:", result)
+        if (!result.success) {
+          toast({
+            title: "Error",
+            description: result.error || `No se pudo guardar el archivo: ${file.name}`,
+            variant: "destructive",
+          })
+          setUploading(false)
+          return
+        }
+      } catch (error) {
+        console.error("[v0] Error uploading file:", error)
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Error al procesar el archivo",
+          variant: "destructive",
+        })
+        setUploading(false)
+        return
+      }
     }
 
+    console.log("[v0] Upload completado exitosamente")
+    toast({
+      title: "Éxito",
+      description: `Se guardaron ${selectedFiles.length} archivo(s) correctamente`,
+    })
+    setObservations("")
+    setSelectedFiles([])
+    setShowUploadForm(false)
+    loadIndices()
     setUploading(false)
   }
 
   const handleDelete = async (indice: Indice) => {
     if (!confirm("¿Está seguro de eliminar este índice?")) return
 
-    const result = await deleteIndice(indice.id, indice.file_url)
+    const result = await deleteIndiceAction(indice.id, indice.file_url)
 
     if (result.success) {
       toast({
@@ -196,7 +228,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
         </h3>
         {canEdit && (
           <Button onClick={() => setShowUploadForm(true)} size="sm" className="bg-red-700 hover:bg-red-800">
-            <Upload className="h-4 w-4 mr-2" />
+            <LucideUpload className="h-4 w-4 mr-2" />
             Subir
           </Button>
         )}
@@ -204,11 +236,11 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-red-700" />
+          <LucideLoader2 className="h-8 w-8 animate-spin text-red-700" />
         </div>
       ) : indices.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+          <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
           <p>No hay registros aún</p>
         </div>
       ) : (
@@ -236,7 +268,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
                       className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                       onClick={() => handleDelete(indice)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <LucideTrash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -250,7 +282,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-red-700 hover:text-red-800 font-medium hover:underline"
                   >
-                    <Download className="h-4 w-4" />
+                    <LucideDownload className="h-4 w-4" />
                     {indice.file_name || "Descargar archivo"}
                   </a>
                 )}
@@ -283,12 +315,13 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
                 />
               </div>
               <div>
-                <Label htmlFor="file">Archivo adjunto (opcional)</Label>
+                <Label htmlFor="files">Archivos adjuntos (opcional)</Label>
                 <div className="mt-2">
                   <input
-                    id="file"
+                    id="files"
                     type="file"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    multiple
+                    onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
                     className="block w-full text-sm text-gray-500
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
@@ -296,29 +329,47 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
                       file:bg-red-50 file:text-red-700
                       hover:file:bg-red-100"
                   />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {selectedFile.name}</p>
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-medium">Archivos seleccionados ({selectedFiles.length}):</p>
+                      <ul className="space-y-1">
+                        {selectedFiles.map((file, index) => (
+                          <li key={index} className="flex items-center justify-between text-sm text-muted-foreground bg-gray-50 p-2 rounded">
+                            <span>{file.name}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}
+                              className="h-6 w-6 p-0"
+                            >
+                              ✕
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setShowUploadForm(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleUpload} disabled={uploading} className="bg-red-700 hover:bg-red-800">
-                  {uploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Subiendo...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Subir
-                    </>
-                  )}
-                </Button>
-              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowUploadForm(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpload} disabled={uploading} className="bg-red-700 hover:bg-red-800">
+                {uploading ? (
+                  <>
+                    <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Subiendo...
+                  </>
+                ) : (
+                  <>
+                    <LucideUpload className="mr-2 h-4 w-4" />
+                    Subir
+                  </>
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -339,7 +390,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
             </div>
             {selectedType && (
               <Button variant="ghost" size="sm" onClick={() => setSelectedType(null)}>
-                <X className="h-4 w-4 mr-2" />
+                <LucideX className="h-4 w-4 mr-2" />
                 Volver
               </Button>
             )}

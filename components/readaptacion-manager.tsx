@@ -68,24 +68,7 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
     setLoading(false)
   }
 
-  // --- FUNCIÓN PARA DESCARGAR ---
-  const downloadFile = (file: { name: string; url: string }) => {
-    try {
-      const link = document.createElement("a");
-      link.href = file.url;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      toast({ 
-        title: "Error", 
-        description: "No se pudo descargar el archivo", 
-        variant: "destructive" 
-      });
-    }
-  };
-
+  // Manejo de archivos (Base64 como en tu page.tsx)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
@@ -120,7 +103,7 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
         content,
         hyperlink,
         attachments,
-        createdBy: userName, // Se asegura de enviar el nombre del prop
+        createdBy: userName,
         area: "readaptacion"
       }
 
@@ -200,12 +183,12 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
                     <div>
                       <CardTitle className="text-lg text-red-900">{report.title}</CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(report.date).toLocaleDateString("es-AR")} • Por: {report.createdBy || "Profesional"}
+                        {new Date(report.date).toLocaleDateString("es-AR")} • Por: {report.createdBy}
                       </p>
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(report)} className="text-blue-600">
-                        ✏️
+                        ✏��
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(report.id)} className="text-gray-400 hover:text-red-600">
                         <Trash2 className="h-4 w-4" />
@@ -216,7 +199,7 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
                     <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">{report.content}</p>
                     
                     {report.hyperlink && (
-                      <a href={report.hyperlink} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs text-red-700 hover:underline mb-2">
+                      <a href={report.hyperlink} target="_blank" className="flex items-center gap-2 text-xs text-red-700 hover:underline mb-2">
                         <LinkIcon className="h-3 w-3" /> {report.hyperlink}
                       </a>
                     )}
@@ -224,13 +207,9 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
                     {report.attachments && report.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {report.attachments.map((file) => (
-                          <div 
-                            key={file.id} 
-                            onClick={() => downloadFile(file)}
-                            className="flex items-center gap-2 p-1.5 bg-red-50 rounded border border-red-100 text-[10px] text-red-800 cursor-pointer hover:bg-red-100 transition-colors"
-                          >
-                            <Download className="h-3 w-3" />
-                            <span className="truncate max-w-[120px] font-medium">{file.name}</span>
+                          <div key={file.id} className="flex items-center gap-2 p-1.5 bg-red-50 rounded border border-red-100 text-[10px] text-red-800">
+                            <FileText className="h-3 w-3" />
+                            <span className="truncate max-w-[120px]">{file.name}</span>
                           </div>
                         ))}
                       </div>
@@ -242,6 +221,7 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
           )}
         </div>
 
+        {/* Modal de Formulario (Crear/Editar) */}
         <Dialog open={showForm} onOpenChange={closeForm}>
           <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
@@ -250,11 +230,11 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Título</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Evolución de ligamentos" />
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Evolución de ligamentos - Jugador X" />
               </div>
               <div className="grid gap-2">
                 <Label>Contenido</Label>
-                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={5} placeholder="Detalles..." />
+                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={5} placeholder="Detalles del proceso..." />
               </div>
               <div className="grid gap-2">
                 <Label>Hipervínculo (YouTube, Drive, etc)</Label>

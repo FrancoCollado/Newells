@@ -1,90 +1,106 @@
 import { supabase } from "./supabase"
 
-export interface CaptacionDoc {
-  id: string
-  titulo: string
+export interface JugadorRow {
+  apellido_nombre: string
   categoria: string
-  archivo_nombre: string
-  archivo_url: string
-  subido_por: string
-  created_at: string
+  posicion: string
+  contacto: string
+  telefono: string
+  club: string
+  captador: string
+  pension: string
+  puntaje: string
+  volver_a_citar: string
 }
 
-/**
- * Obtiene los documentos de una categoría específica
- */
-export async function getCaptacionDocsByCategory(categoria: string): Promise<CaptacionDoc[]> {
+export interface CaptacionInforme {
+  id: string
+  titulo: string
+  seccion: string
+  subido_por: string
+  created_at: string
+  contenido: JugadorRow[] // Array con las filas del excel
+}
+
+export async function getCaptacionInformes(seccion: string): Promise<CaptacionInforme[]> {
   try {
     const { data, error } = await supabase
-      .from("captacion_documentos")
+      .from("captacion_informes")
       .select("*")
-      .eq("categoria", categoria)
+      .eq("seccion", seccion)
       .order("created_at", { ascending: false })
 
     if (error) throw error
     return data || []
   } catch (error) {
-    console.error("Error fetching captacion docs:", error)
+    console.error("Error fetching captacion informes:", error)
     return []
   }
 }
 
-/**
- * Sube un archivo y crea el registro en la base de datos
- */
-export async function createCaptacionDoc(
+export async function createCaptacionInforme(
   titulo: string,
-  categoria: string,
-  file: File,
-  userName: string
+  seccion: string,
+  subido_por: string,
+  contenido: JugadorRow[]
 ) {
   try {
-    // 1. Subir archivo al Storage (usaremos el bucket 'captacion' o puedes reusar 'indices')
-    const fileExt = file.name.split(".").pop()
-    const filePath = `docs/${crypto.randomUUID()}.${fileExt}`
+    const { error } = await supabase
+      .from("captacion_informes")
+      .insert({
+        titulo,
+        seccion,
+        subido_por,
+        contenido // Supabase convierte esto a JSONB automáticamente
+      })
 
-    // Nota: Asegúrate de tener creado el bucket "captacion" en Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from("captacion") 
-      .upload(filePath, file)
-
-    if (uploadError) throw uploadError
-
-    const { data: urlData } = supabase.storage.from("captacion").getPublicUrl(filePath)
-
-    // 2. Insertar registro en la tabla
-    const { error: dbError } = await supabase.from("captacion_documentos").insert({
-      titulo,
-      categoria,
-      archivo_nombre: file.name,
-      archivo_url: urlData.publicUrl,
-      subido_por: userName,
-    })
-
-    if (dbError) throw dbError
-
+    if (error) throw error
     return { success: true }
   } catch (error: any) {
-    console.error("Error en createCaptacionDoc:", error)
-    return { success: false, error: error.message || "Error al subir documento" }
+    console.error("Error creating captacion informe:", error)
+    return { success: false, error: error.message }
   }
 }
 
-/**
- * Elimina un documento y su archivo físico
- */
-export async function deleteCaptacionDoc(id: string, fileUrl: string) {
+export async function deleteCaptacionInforme(id: string) {
   try {
-    const filePath = fileUrl.split("/captacion/")[1]
-    if (filePath) {
-      await supabase.storage.from("captacion").remove([filePath])
-    }
+    const { error } = await supabase
+      .from("captacion_informes")
+      .delete()
+      .eq("id", id)
 
-    const { error } = await supabase.from("captacion_documentos").delete().eq("id", id)
     if (error) throw error
-
     return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+// Agregar esto a tu archivo lib/captacion.ts
+
+/**
+ * Busca un jugador por nombre en todos los informes de todas las secciones
+ */
+export async function searchJugadorGlobal(nombre: string): Promise<CaptacionInforme[]> {
+  try {
+    // Traemos todos los informes para filtrar localmente (es más preciso con JSONB)
+    const { data, error } = await supabase
+      .from("captacion_informes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // Filtramos los informes donde al menos un jugador coincida con el nombre
+    const resultados = (data as CaptacionInforme[]).filter(informe => 
+      informe.contenido.some(jugador => 
+        jugador.apellido_nombre.toLowerCase().includes(nombre.toLowerCase())
+      )
+    );
+
+    return resultados;
   } catch (error) {
-    return { success: false, error: "No se pudo eliminar" }
+    console.error("Error en searchJugadorGlobal:", error);
+    return [];
   }
 }

@@ -40,7 +40,6 @@ import { getMatchesByDivision } from "@/lib/matches"
 import { getDivisionLabel, getPlayers } from "@/lib/players"
 import { hasPermission } from "@/lib/rbac"
 import { IndicesManager } from "@/components/indices-manager"
-import { EvaluationsManager } from "@/components/evaluations-manager"
 import { CaptacionManager } from "@/components/captacion-manager"
 import { LeagueTypeFilter } from "@/components/league-type-filter"
 import { ReadaptacionManager } from "@/components/readaptacion-manager"
@@ -79,7 +78,6 @@ export default function DashboardPage() {
   const [loadingMoreTrainings, setLoadingMoreTrainings] = useState(false)
 
   const [showIndicesModal, setShowIndicesModal] = useState(false)
-  const [showEvaluationsModal, setShowEvaluationsModal] = useState(false)
   const [showCaptacionModal, setShowCaptacionModal] = useState(false)
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
   const [editingTrainingData, setEditingTrainingData] = useState<any | null>(null)
@@ -548,26 +546,15 @@ export default function DashboardPage() {
                     {selectedDivision !== "all" && (
                       <div className="flex flex-wrap gap-2">
                         {canViewIndices && (
-                          <>
-                            <Button
-                              onClick={() => setShowIndicesModal(true)}
-                              variant="outline"
-                              size="sm"
-                              className="border-red-700 text-red-700 hover:bg-red-50 mb-4"
-                            >
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              Índices
-                            </Button>
-                            <Button
-                              onClick={() => setShowEvaluationsModal(true)}
-                              variant="outline"
-                              size="sm"
-                              className="border-orange-600 text-orange-600 hover:bg-orange-50 mb-4"
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Evaluaciones
-                            </Button>
-                          </>
+                          <Button
+                            onClick={() => setShowIndicesModal(true)}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-700 text-red-700 hover:bg-red-50 mb-4"
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Índices
+                          </Button>
                         )}
                         {canManageContent && hasPermission(user.role, "manage_matches") && (
                           <Button
@@ -956,14 +943,6 @@ export default function DashboardPage() {
         <ReadaptacionManager
           userName={user.name}
           onClose={() => setShowReadaptacionModal(false)}
-        />
-      )}
-      {showEvaluationsModal && selectedDivision !== "all" && user && (
-        <EvaluationsManager
-          division={selectedDivision}
-          userName={user.name}
-          onClose={() => setShowEvaluationsModal(false)}
-          canEdit={user.role === "dirigente" || user.role === "entrenador"}
         />
       )}
     </div>

@@ -2,33 +2,30 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Search, 
-  Users, 
-  Trophy, 
+  PlusCircle, 
+  Trash2, 
+  Loader2, 
+  ChevronLeft, 
   Calendar, 
-  ClipboardCheck, 
-  Globe, 
-  UserPlus, 
-  MapPin,
-  Upload,
-  FileText,
-  Download,
-  Trash2,
-  Loader2,
-  ChevronLeft,
+  User, 
+  Table,
+  Plus,
+  UserSearch,
   X
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { 
-  getCaptacionDocsByCategory, 
-  createCaptacionDoc, 
-  deleteCaptacionDoc, 
-  type CaptacionDoc 
+  getCaptacionInformes, 
+  createCaptacionInforme, 
+  deleteCaptacionInforme, 
+  searchJugadorGlobal,
+  type CaptacionInforme,
+  type JugadorRow 
 } from "@/lib/captacion"
 
 interface CaptacionManagerProps {
@@ -36,236 +33,340 @@ interface CaptacionManagerProps {
   onClose: () => void
 }
 
+const SECTIONS = [
+  "Amistosos", "Canteras de América", "Cierres", "Divisionales fútbol argentino",
+  "Fechas de ligas", "Fichajes", "Inserciones", "Reserva", "Selectivos",
+  "Sudamericanos (selecciones)", "Torneos"
+]
+
+const EMPTY_ROW: JugadorRow = {
+  apellido_nombre: "", categoria: "", posicion: "", contacto: "",
+  telefono: "", club: "", captador: "", pension: "", puntaje: "", volver_a_citar: ""
+}
+
 export function CaptacionManager({ userName, onClose }: CaptacionManagerProps) {
   const { toast } = useToast()
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [showUploadForm, setShowUploadForm] = useState(false)
-  const [titulo, setTitulo] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [documentos, setDocumentos] = useState<CaptacionDoc[]>([])
+  
+  // Estados de Navegación
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [viewingInforme, setViewingInforme] = useState<CaptacionInforme | null>(null)
+  
+  // Estados de Datos
   const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [informes, setInformes] = useState<CaptacionInforme[]>([])
+  
+  // Estados de Búsqueda Global
+  const [globalSearch, setGlobalSearch] = useState("")
+  const [searchResults, setSearchResults] = useState<CaptacionInforme[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
-  const opciones = [
-    { label: "Amistosos", icon: <Users className="h-5 w-5" /> },
-    { label: "Canteras de América", icon: <Globe className="h-5 w-5" /> },
-    { label: "Cierres", icon: <ClipboardCheck className="h-5 w-5" /> },
-    { label: "Divisionales Fútbol Argentino", icon: <Trophy className="h-5 w-5" /> },
-    { label: "Fechas de Ligas", icon: <Calendar className="h-5 w-5" /> },
-    { label: "Fichajes", icon: <UserPlus className="h-5 w-5" /> },
-    { label: "Inserciones", icon: <MapPin className="h-5 w-5" /> },
-    { label: "Reserva", icon: <Users className="h-5 w-5" /> },
-    { label: "Selectivos", icon: <Search className="h-5 w-5" /> },
-    { label: "Sudamericanos (Selecciones)", icon: <Globe className="h-5 w-5" /> },
-    { label: "Torneos", icon: <Trophy className="h-5 w-5" /> },
-  ]
+  // Estados de Formulario (Nuevo Informe)
+  const [newInformeTitle, setNewInformeTitle] = useState("")
+  const [rows, setRows] = useState<JugadorRow[]>([{ ...EMPTY_ROW }])
 
-  // Cargar documentos cuando se selecciona una categoría
+  // Cargar informes de sección
   useEffect(() => {
-    if (selectedCategory) {
-      loadDocs()
-    }
-  }, [selectedCategory])
+    if (selectedSection) loadInformes()
+  }, [selectedSection])
 
-  const loadDocs = async () => {
-    if (!selectedCategory) return
+  async function loadInformes() {
     setLoading(true)
-    const data = await getCaptacionDocsByCategory(selectedCategory)
-    setDocumentos(data)
+    const data = await getCaptacionInformes(selectedSection!)
+    setInformes(data)
     setLoading(false)
   }
 
-  const handleUpload = async () => {
-    if (!titulo.trim() || !selectedFile || !selectedCategory) {
-      toast({
-        title: "Error",
-        description: "Debe completar el título y seleccionar un archivo",
-        variant: "destructive",
-      })
-      return
-    }
+  // Lógica de Búsqueda Global
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (globalSearch.length >= 3) {
+        handleGlobalSearch()
+      } else {
+        setSearchResults([])
+        setIsSearching(false)
+      }
+    }, 500)
 
-    setUploading(true)
-    const result = await createCaptacionDoc(titulo, selectedCategory, selectedFile, userName)
+    return () => clearTimeout(delayDebounceFn)
+  }, [globalSearch])
 
-    if (result.success) {
-      toast({
-        title: "Éxito",
-        description: "Documentación guardada correctamente",
-      })
-      setTitulo("")
-      setSelectedFile(null)
-      setShowUploadForm(false)
-      loadDocs()
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "No se pudo subir el archivo",
-        variant: "destructive",
-      })
-    }
-    setUploading(false)
+  async function handleGlobalSearch() {
+    setIsSearching(true)
+    const results = await searchJugadorGlobal(globalSearch)
+    setSearchResults(results)
+    setIsSearching(false)
   }
 
-  const handleDelete = async (doc: CaptacionDoc) => {
-    if (!confirm("¿Está seguro de eliminar este documento?")) return
+  // Handlers de Tabla
+  const handleCellChange = (index: number, field: keyof JugadorRow, value: string) => {
+    const newRows = [...rows]; newRows[index] = { ...newRows[index], [field]: value }; setRows(newRows)
+  }
+  const addRow = () => setRows([...rows, { ...EMPTY_ROW }])
+  const removeRow = (index: number) => { if (rows.length > 1) setRows(rows.filter((_, i) => i !== index)) }
 
-    const result = await deleteCaptacionDoc(doc.id, doc.archivo_url)
+  async function handleSave() {
+    if (!newInformeTitle.trim()) return toast({ title: "Falta título", variant: "destructive" })
+    const validRows = rows.filter(r => r.apellido_nombre.trim() !== "")
+    if (validRows.length === 0) return toast({ title: "Tabla vacía", variant: "destructive" })
 
+    setLoading(true)
+    const result = await createCaptacionInforme(newInformeTitle, selectedSection!, userName, validRows)
     if (result.success) {
-      toast({
-        title: "Éxito",
-        description: "Documento eliminado correctamente",
-      })
-      loadDocs()
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "No se pudo eliminar",
-        variant: "destructive",
-      })
+      setShowForm(false); setNewInformeTitle(""); setRows([{ ...EMPTY_ROW }]); loadInformes()
+      toast({ title: "Guardado correctamente" })
+    }
+    setLoading(false)
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("¿Eliminar informe?")) return
+    const result = await deleteCaptacionInforme(id)
+    if (result.success) {
+      loadInformes()
+      if (globalSearch) handleGlobalSearch()
     }
   }
 
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="border-b pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl flex items-center gap-2 text-red-700">
-                {selectedCategory ? (
-                  <Button variant="ghost" size="icon" onClick={() => setSelectedCategory(null)} className="mr-2">
-                    <ChevronLeft className="h-6 w-6" />
-                  </Button>
-                ) : <Search className="h-7 w-7" />}
-                {selectedCategory || "Área de Captación"}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedCategory ? `Historial para ${selectedCategory}` : `Panel de gestión - Usuario: ${userName}`}
-              </DialogDescription>
-            </div>
+  // --- RENDER VISTA PRINCIPAL (SECCIONES + BUSCADOR) ---
+  if (!selectedSection) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex justify-end">
+        <div className="w-full md:w-[600px] bg-background shadow-2xl border-l h-full overflow-y-auto p-6 animate-in slide-in-from-right">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold flex gap-2 items-center text-red-800"><Search/> Captación</h2>
+            <Button variant="ghost" onClick={onClose}><X/></Button>
           </div>
-        </DialogHeader>
-        
-        {!selectedCategory ? (
-          <div className="py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {opciones.map((opcion, index) => (
-              <Button 
-                key={index}
-                variant="outline" 
-                className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-red-50 hover:border-red-500 transition-all group"
-                onClick={() => setSelectedCategory(opcion.label)}
-              >
-                <div className="text-red-700 group-hover:scale-110 transition-transform">
-                  {opcion.icon}
-                </div>
-                <span className="text-sm font-semibold text-center px-2">
-                  {opcion.label}
-                </span>
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <div className="py-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">Documentación Registrada</h3>
-              <Button onClick={() => setShowUploadForm(true)} className="bg-red-700 hover:bg-red-800">
-                <Upload className="h-4 w-4 mr-2" />
-                Subir Nuevo
-              </Button>
-            </div>
 
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-red-700" />
-              </div>
-            ) : documentos.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>No hay documentos cargados en esta categoría</p>
-              </div>
-            ) : (
+          {/* BUSCADOR GLOBAL */}
+          <div className="mb-8 relative">
+            <label className="text-sm font-semibold mb-2 block">Buscar jugador en todos los informes:</label>
+            <div className="relative">
+              <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <Input 
+                className="pl-10 h-12 border-red-200 focus:ring-red-500"
+                placeholder="Ingresa apellido o nombre del jugador..."
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+              />
+            </div>
+            {globalSearch.length > 0 && globalSearch.length < 3 && (
+              <p className="text-xs text-muted-foreground mt-1">Escribe al menos 3 letras...</p>
+            )}
+          </div>
+
+          {/* RESULTADOS DE BÚSQUEDA */}
+          {globalSearch.length >= 3 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold uppercase text-muted-foreground mb-3 flex justify-between">
+                Resultados encontrados {isSearching && <Loader2 className="animate-spin h-4 w-4"/>}
+              </h3>
               <div className="grid gap-3">
-                {documentos.map((doc) => (
-                  <Card key={doc.id} className="border-red-100 overflow-hidden">
-                    <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                      <div>
-                        <CardTitle className="text-base">{doc.titulo}</CardTitle>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(doc.created_at).toLocaleDateString("es-AR")} • Por: {doc.subido_por}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" asChild className="text-red-700">
-                          <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-gray-400 hover:text-red-600"
-                          onClick={() => handleDelete(doc)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {searchResults.length === 0 && !isSearching ? (
+                  <p className="text-sm italic text-muted-foreground bg-slate-50 p-4 rounded-lg border border-dashed">
+                    No se encontró ningún jugador con ese nombre en los informes.
+                  </p>
+                ) : (
+                  searchResults.map(inf => (
+                    <Card key={inf.id} className="border-l-4 border-l-red-600 hover:bg-slate-50 cursor-pointer" onClick={() => setViewingInforme(inf)}>
+                      <CardHeader className="py-3 px-4">
+                        <div className="flex justify-between items-center">
+                          <CardTitle className="text-md">{inf.titulo}</CardTitle>
+                          <span className="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded-full font-bold">{inf.seccion}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex gap-3">
+                          <span>{new Date(inf.created_at).toLocaleDateString()}</span>
+                          <span className="font-medium text-red-800">
+                             {inf.contenido.find(j => j.apellido_nombre.toLowerCase().includes(globalSearch.toLowerCase()))?.apellido_nombre}
+                          </span>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))
+                )}
+              </div>
+              <hr className="my-8" />
+            </div>
+          )}
+
+          {/* LISTA DE SECCIONES */}
+          {!globalSearch && (
+            <>
+              <h3 className="text-sm font-bold uppercase text-muted-foreground mb-3">Secciones</h3>
+              <div className="grid gap-3">
+                {SECTIONS.map((sec) => (
+                  <Card key={sec} className="hover:bg-accent cursor-pointer transition-colors" onClick={() => setSelectedSection(sec)}>
+                    <CardHeader className="py-4">
+                      <CardTitle className="text-lg flex justify-between items-center">
+                        {sec}
+                        <ChevronLeft className="rotate-180 h-4 w-4 opacity-30" />
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className="py-2 px-4 border-t bg-gray-50/50">
-                      <p className="text-xs truncate italic text-gray-500">📎 {doc.archivo_nombre}</p>
-                    </CardContent>
                   </Card>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
-        <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Subir Documentación</DialogTitle>
-              <DialogDescription>Categoría: {selectedCategory}</DialogDescription>
+  // --- RENDER VISTA DE SECCIÓN (HISTORIAL) ---
+  return (
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex justify-end">
+      <div className="w-full md:w-[900px] bg-background shadow-2xl border-l h-full flex flex-col animate-in slide-in-from-right">
+        
+        {/* Header Seccion */}
+        <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
+          <div className="flex gap-3 items-center">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedSection(null)}><ChevronLeft/></Button>
+            <div>
+              <h2 className="text-xl font-bold">{selectedSection}</h2>
+              <p className="text-sm text-muted-foreground">Historial de informes</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button className="bg-red-700 hover:bg-red-800" onClick={() => setShowForm(true)}>
+              <PlusCircle className="mr-2 h-4 w-4"/> Nuevo Informe
+            </Button>
+            <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          </div>
+        </div>
+
+        {/* Lista de Informes de la Sección */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          {loading ? (
+            <div className="flex justify-center mt-10"><Loader2 className="animate-spin text-red-700"/></div>
+          ) : informes.length === 0 ? (
+            <div className="text-center mt-10 text-muted-foreground">No hay informes cargados.</div>
+          ) : (
+            <div className="grid gap-4">
+              {informes.map((inf) => (
+                <Card key={inf.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2 flex flex-row justify-between items-start">
+                    <div onClick={() => setViewingInforme(inf)} className="flex-1">
+                      <CardTitle className="text-lg font-bold text-red-800 hover:underline">{inf.titulo}</CardTitle>
+                      <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3"/> {new Date(inf.created_at).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1"><User className="h-3 w-3"/> {inf.subido_por}</span>
+                        <span className="flex items-center gap-1"><Table className="h-3 w-3"/> {inf.contenido.length} Jugadores</span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-red-500 h-8 w-8" onClick={() => handleDelete(inf.id)}><Trash2 className="h-4 w-4"/></Button>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* --- MODAL NUEVO INFORME (EXCEL) --- */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 py-4 border-b">
+              <DialogTitle>Nuevo Informe: {selectedSection}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="titulo">Título del Documento</Label>
-                <Input 
-                  id="titulo" 
-                  placeholder="Ej: Informe de Fichajes Enero" 
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="file">Archivo Adjunto</Label>
-                <Input 
-                  id="file" 
-                  type="file" 
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="cursor-pointer file:bg-red-50 file:text-red-700 file:border-0"
-                />
+            <div className="p-4 border-b bg-slate-50 flex gap-4 items-end">
+              <div className="w-1/3">
+                <label className="text-sm font-medium mb-1 block">Título del Informe</label>
+                <Input placeholder="Ej: Torneo Canteras..." value={newInformeTitle} onChange={(e) => setNewInformeTitle(e.target.value)} />
               </div>
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowUploadForm(false)}>Cancelar</Button>
-              <Button 
-                onClick={handleUpload} 
-                disabled={uploading}
-                className="bg-red-700 hover:bg-red-800"
-              >
-                {uploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                {uploading ? "Subiendo..." : "Guardar"}
-              </Button>
+            <div className="flex-1 overflow-auto p-4 bg-white">
+              <table className="w-full text-sm border-collapse">
+                <thead className="bg-slate-100 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-2 border text-left min-w-[200px]">Nombre</th>
+                    <th className="p-2 border text-left">Cat.</th>
+                    <th className="p-2 border text-left">Pos.</th>
+                    <th className="p-2 border text-left">Club</th>
+                    <th className="p-2 border text-left">Tel.</th>
+                    <th className="p-2 border text-left">Contacto</th>
+                    <th className="p-2 border text-left">Cap.</th>
+                    <th className="p-2 border text-left">Pensión</th>
+                    <th className="p-2 border text-left">Puntaje</th>
+                    <th className="p-2 border text-left">Citar</th>
+                    <th className="p-2 border"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.apellido_nombre} onChange={(e) => handleCellChange(i, 'apellido_nombre', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.categoria} onChange={(e) => handleCellChange(i, 'categoria', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.posicion} onChange={(e) => handleCellChange(i, 'posicion', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.club} onChange={(e) => handleCellChange(i, 'club', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.telefono} onChange={(e) => handleCellChange(i, 'telefono', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.contacto} onChange={(e) => handleCellChange(i, 'contacto', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.captador} onChange={(e) => handleCellChange(i, 'captador', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.pension} onChange={(e) => handleCellChange(i, 'pension', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.puntaje} onChange={(e) => handleCellChange(i, 'puntaje', e.target.value)} /></td>
+                      <td className="p-1 border"><Input className="h-8 border-transparent focus:border-red-400" value={row.volver_a_citar} onChange={(e) => handleCellChange(i, 'volver_a_citar', e.target.value)} /></td>
+                      <td className="p-1 border text-center"><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4"/></Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Button variant="outline" className="mt-4 w-full border-dashed" onClick={addRow}><Plus className="mr-2 h-4 w-4"/> Agregar Fila</Button>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2 bg-slate-50">
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={loading} className="bg-red-700">Guardar Informe</Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        <div className="mt-4 pt-4 border-t flex justify-end">
-          <Button variant="secondary" onClick={onClose}>Cerrar Panel</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        {/* --- MODAL VER INFORME --- */}
+        {viewingInforme && (
+          <Dialog open={!!viewingInforme} onOpenChange={() => setViewingInforme(null)}>
+            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0">
+              <DialogHeader className="px-6 py-4 border-b bg-slate-50">
+                <DialogTitle className="text-xl text-red-800">{viewingInforme.titulo}</DialogTitle>
+                <div className="text-xs text-muted-foreground flex gap-4 mt-1">
+                  <span>Sección: <b>{viewingInforme.seccion}</b></span>
+                  <span>Fecha: {new Date(viewingInforme.created_at).toLocaleDateString()}</span>
+                  <span>Por: {viewingInforme.subido_por}</span>
+                </div>
+              </DialogHeader>
+              <div className="flex-1 overflow-auto p-4">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="p-2 border text-left">Jugador</th>
+                      <th className="p-2 border text-left">Cat.</th>
+                      <th className="p-2 border text-left">Pos.</th>
+                      <th className="p-2 border text-left">Club</th>
+                      <th className="p-2 border text-left">Tel.</th>
+                      <th className="p-2 border text-left">Contacto</th>
+                      <th className="p-2 border text-left">Cap.</th>
+                      <th className="p-2 border text-left">Pensión</th>
+                      <th className="p-2 border text-left">Puntaje</th>
+                      <th className="p-2 border text-left">Citar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewingInforme.contenido.map((row, i) => (
+                      <tr key={i} className={`hover:bg-slate-50 ${globalSearch && row.apellido_nombre.toLowerCase().includes(globalSearch.toLowerCase()) ? 'bg-yellow-50 font-bold' : ''}`}>
+                        <td className="p-2 border">{row.apellido_nombre}</td>
+                        <td className="p-2 border">{row.categoria}</td>
+                        <td className="p-2 border">{row.posicion}</td>
+                        <td className="p-2 border">{row.club}</td>
+                        <td className="p-2 border">{row.telefono}</td>
+                        <td className="p-2 border">{row.contacto}</td>
+                        <td className="p-2 border">{row.captador}</td>
+                        <td className="p-2 border">{row.pension}</td>
+                        <td className="p-2 border">{row.puntaje}</td>
+                        <td className="p-2 border">{row.volver_a_citar}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+    </div>
   )
 }
