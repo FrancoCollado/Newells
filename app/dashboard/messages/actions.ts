@@ -33,5 +33,6 @@ export async function markAsReadAsProfessionalAction(conversationId: string) {
   if (!user) throw new Error("Unauthorized")
 
   await markMessagesAsRead(conversationId, "PROFESSIONAL")
-  revalidatePath(`/dashboard/messages`)
+  // No revalidatePath here - Client handles state updates optimistically/realtime
+  // revalidatePath(`/dashboard/messages`) 
 }

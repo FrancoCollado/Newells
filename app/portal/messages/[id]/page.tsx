@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { createAdminClient } from "@/lib/supabase"
+import { PlayerStatusManager } from "@/components/player-status-manager"
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,8 +20,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     .eq("id", id)
     .single()
 
+  const { data: player } = await supabase.from("players").select("last_seen").eq("id", session.playerId).single()
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <PlayerStatusManager playerId={session.playerId} initialLastSeen={player?.last_seen} />
       <header className="shrink-0 flex items-center gap-3 p-4 border-b bg-background/80 backdrop-blur-md z-10 h-16 shadow-sm">
         <Link href="/portal/messages">
           <Button variant="ghost" size="icon" className="-ml-2">

@@ -52,11 +52,11 @@ export async function loginPlayer(formData: FormData) {
     return { error: "Contraseña incorrecta." }
   }
 
-  // Actualizar última actividad
-  await supabase
-    .from("players")
-    .update({ last_active_at: new Date().toISOString() })
-    .eq("id", player.id)
+    // Actualizar último acceso
+    await supabaseAdmin
+      .from("players")
+      .update({ last_seen: new Date().toISOString() })
+      .eq("id", player.id)
 
   // Crear sesión
   await createPlayerSession({

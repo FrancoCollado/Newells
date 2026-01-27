@@ -17,13 +17,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { NewChatForm } from "./new-chat-form" // We'll create this small client component
+import { PlayerStatusManager } from "@/components/player-status-manager"
+import { createAdminClient } from "@/lib/supabase"
 
 export default async function MessagesPage() {
   const session = await requirePlayerSession()
   const conversations = await getConversationsAction()
 
+  // Fetch last_seen for presence
+  const supabase = createAdminClient()
+  const { data: player } = await supabase.from("players").select("last_seen").eq("id", session.playerId).single()
+
   return (
     <div className="min-h-screen bg-background pb-20">
+      <PlayerStatusManager playerId={session.playerId} initialLastSeen={player?.last_seen} />
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b">
         <div className="container max-w-lg mx-auto px-4 h-16 flex items-center justify-between">

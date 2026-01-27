@@ -10,12 +10,15 @@ import { Send, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase" // Import supabase client
+import { useRouter } from "next/navigation"
 
 interface Message {
   id: string
   content: string
   sender_type: "PLAYER" | "PROFESSIONAL"
   created_at: string
+  is_read?: boolean // Optional as it might not be in all queries
 }
 
 interface ChatInterfaceProps {
@@ -28,6 +31,7 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [inputValue, setInputValue] = useState("")
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   
   // Pagination State
   const [msgPage, setMsgPage] = useState(0)
@@ -38,28 +42,88 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Polling for new messages
+  // Mark as read on mount if needed
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const latestBatch = await getMessagesAction(conversationId, 0, 10)
+    // Check if there are any unread messages from professional in the initial batch
+    // Note: 'is_read' field availability depends on the query, assuming it's available or we mark anyway on open.
+    // Ideally we check specific messages, but "markAsReadAction" marks ALL for the conversation.
+    
+    // We simply mark as read on open
+    startTransition(async () => {
+        await markAsReadAction(conversationId)
+        router.refresh() // Update server components (badges)
+    })
+  }, [conversationId, router])
+
+  // Realtime Subscription (Replaces Polling)
+  useEffect(() => {
+    if (!conversationId) return
+
+    const channel = supabase
+      .channel(`chat-portal:${conversationId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'chat_messages', 
+        filter: `conversation_id=eq.${conversationId}` 
+      }, (payload) => {
+        const newMessage = payload.new as Message
+
+        // Side Effect: Mark as read if from professional
+        if (newMessage.sender_type === "PROFESSIONAL") {
+            startTransition(async () => {
+                await markAsReadAction(conversationId)
+                router.refresh()
+            })
+        }
+
         setMessages(prev => {
-           const existingIds = new Set(prev.map(m => m.id))
-           const trulyNew = latestBatch.filter(m => !existingIds.has(m.id))
-           
-           if (trulyNew.length === 0) return prev
-           
-           // Si hay mensajes nuevos de un profesional, marcamos como leído
-           const hasNewFromProfessional = trulyNew.some(m => m.sender_type === "PROFESSIONAL")
-           if (hasNewFromProfessional) {
-              markAsReadAction(conversationId)
-           }
-           
-           return [...prev, ...trulyNew]
+            const isMine = newMessage.sender_type === "PLAYER"
+            
+            // 1. Optimistic Replacement for my messages
+            if (isMine) {
+                const tempIndex = prev.findIndex(m => 
+                    m.id.startsWith("temp-") && 
+                    m.content === newMessage.content
+                )
+                
+                if (tempIndex !== -1) {
+                    const newMessages = [...prev]
+                    newMessages[tempIndex] = newMessage
+                    return newMessages
+                }
+            }
+
+            // 2. Add incoming message if not duplicate
+            if (prev.some(m => m.id === newMessage.id)) return prev
+            
+            return [...prev, newMessage]
         })
-      } catch (e) {}
-    }, 5000)
-    return () => clearInterval(interval)
+
+        // Scroll to bottom on new message if it's new (not replacement)
+        // We do a simple timeout to allow render
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100)
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `conversation_id=eq.${conversationId}`
+      }, (payload) => {
+         setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m))
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            // console.log(`Portal Chat Connected: ${conversationId}`)
+        }
+        if (status === 'CHANNEL_ERROR') {
+            console.error(`Portal Realtime Error: ${conversationId}. Check RLS policies.`)
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [conversationId])
 
   // Load More (Older) Messages

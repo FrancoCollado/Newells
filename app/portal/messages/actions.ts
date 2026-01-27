@@ -81,7 +81,7 @@ export async function markAsReadAction(conversationId: string) {
   try {
     await verifyConversationOwnership(conversationId, session.playerId)
     await markMessagesAsRead(conversationId, "PLAYER")
-    revalidatePath(`/portal/messages`)
+    // revalidatePath(`/portal/messages`) // Removed to prevent Router update during render
   } catch (error) {
     console.error("Failed to mark as read:", error)
   }
