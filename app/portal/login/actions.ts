@@ -70,6 +70,17 @@ export async function loginPlayer(formData: FormData) {
       }
   }
 
+  // 1.5 Deduplicar resultados por nombre
+  // Si aparece la misma persona en varias divisiones, nos quedamos con la primera
+  const uniquePlayers = new Map()
+  players.forEach(p => {
+    const key = p.name.toLowerCase().trim()
+    if (!uniquePlayers.has(key)) {
+      uniquePlayers.set(key, p)
+    }
+  })
+  players = Array.from(uniquePlayers.values())
+
   if (players.length === 0) {
     return { error: "Jugador no encontrado." }
   }

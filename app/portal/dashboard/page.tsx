@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { Activity, Ruler, Weight, User, LogOut, ShieldAlert, Trophy, Timer, Goal, Shirt, CreditCard, MessageSquare, ChevronRight, MapPin, Calendar, Phone, Heart, Users, FileText, Globe } from "lucide-react"
+import { Activity, Ruler, Weight, User, LogOut, ShieldAlert, Trophy, Timer, Goal, Shirt, CreditCard, MessageSquare, ChevronRight, MapPin, Calendar, Phone, Heart, Users, FileText, Globe, Briefcase } from "lucide-react"
 import Link from "next/link"
 import { getPlayerConversations } from "@/lib/chat"
 import { MessagesBadge } from "./messages-badge"
@@ -248,6 +248,19 @@ export default async function PlayerDashboard() {
                             />
                         </div>
                         <div className="space-y-3">
+                            <Label htmlFor="passport_number" className="flex items-center gap-2 text-base">
+                            <CreditCard className="w-4 h-4 text-muted-foreground" /> Pasaporte
+                            </Label>
+                            <Input
+                                id="passport_number"
+                                name="passport_number"
+                                type="text"
+                                defaultValue={player.passport_number || ""}
+                                className="h-12 text-lg"
+                                placeholder="Número de pasaporte"
+                            />
+                        </div>
+                        <div className="space-y-3">
                             <Label htmlFor="birth_date" className="flex items-center gap-2 text-base">
                             <Calendar className="w-4 h-4 text-muted-foreground" /> Fecha de Nacimiento
                             </Label>
@@ -284,6 +297,19 @@ export default async function PlayerDashboard() {
                             />
                         </div>
                         <div className="space-y-3">
+                            <Label htmlFor="passport_origin" className="flex items-center gap-2 text-base">
+                            <Globe className="w-4 h-4 text-muted-foreground" /> Pasaporte (Origen/Emisión)
+                            </Label>
+                            <Input
+                                id="passport_origin"
+                                name="passport_origin"
+                                type="text"
+                                defaultValue={player.passport_origin || ""}
+                                className="h-12 text-lg"
+                                placeholder="Ej: Renovado en Italia"
+                            />
+                        </div>
+                        <div className="space-y-3">
                             <Label htmlFor="province" className="flex items-center gap-2 text-base">
                             <MapPin className="w-4 h-4 text-muted-foreground" /> Provincia
                             </Label>
@@ -307,18 +333,33 @@ export default async function PlayerDashboard() {
                         <MapPin className="w-4 h-4" /> Contacto y Domicilio
                     </h3>
                     <div className="grid grid-cols-1 gap-6">
-                        <div className="space-y-3">
-                            <Label htmlFor="address" className="flex items-center gap-2 text-base">
-                            <MapPin className="w-4 h-4 text-muted-foreground" /> Dirección / Domicilio
-                            </Label>
-                            <Input
-                                id="address"
-                                name="address"
-                                type="text"
-                                defaultValue={player.address || ""}
-                                className="h-12 text-lg"
-                                placeholder="Calle y Altura, Ciudad"
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <Label htmlFor="address" className="flex items-center gap-2 text-base">
+                                <MapPin className="w-4 h-4 text-muted-foreground" /> Domicilio Personal
+                                </Label>
+                                <Input
+                                    id="address"
+                                    name="address"
+                                    type="text"
+                                    defaultValue={player.address || ""}
+                                    className="h-12 text-lg"
+                                    placeholder="Calle y Altura (Origen)"
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <Label htmlFor="rosario_address" className="flex items-center gap-2 text-base">
+                                <MapPin className="w-4 h-4 text-muted-foreground" /> Domicilio en Rosario
+                                </Label>
+                                <Input
+                                    id="rosario_address"
+                                    name="rosario_address"
+                                    type="text"
+                                    defaultValue={player.rosario_address || ""}
+                                    className="h-12 text-lg"
+                                    placeholder="Calle y Altura (Rosario)"
+                                />
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-3">
@@ -335,14 +376,14 @@ export default async function PlayerDashboard() {
                                 />
                             </div>
                             <div className="space-y-3">
-                                <Label htmlFor="emergency_contact_phone" className="flex items-center gap-2 text-base">
+                                <Label htmlFor="parents_phone" className="flex items-center gap-2 text-base">
                                 <Phone className="w-4 h-4 text-muted-foreground" /> Teléfono Padres
                                 </Label>
                                 <Input
-                                    id="emergency_contact_phone"
-                                    name="emergency_contact_phone"
+                                    id="parents_phone"
+                                    name="parents_phone"
                                     type="tel"
-                                    defaultValue={player.emergency_contact_phone || ""}
+                                    defaultValue={player.parents_phone || ""}
                                     className="h-12 text-lg"
                                     placeholder="Teléfono de contacto familiar"
                                 />
@@ -360,16 +401,53 @@ export default async function PlayerDashboard() {
                     </h3>
                     <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-3">
-                            <Label htmlFor="emergency_contact_name" className="flex items-center gap-2 text-base">
+                            <Label htmlFor="tutor_name" className="flex items-center gap-2 text-base">
                             <User className="w-4 h-4 text-muted-foreground" /> Nombre Padre/Madre/Tutor
                             </Label>
                             <Input
-                                id="emergency_contact_name"
-                                name="emergency_contact_name"
+                                id="tutor_name"
+                                name="tutor_name"
                                 type="text"
-                                defaultValue={player.emergency_contact_name || ""}
+                                defaultValue={player.tutor_name || ""}
                                 className="h-12 text-lg"
                                 placeholder="Nombre completo del familiar"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                {/* Sección: Datos del Representante */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Briefcase className="w-4 h-4" /> Datos del Representante
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="representative" className="flex items-center gap-2 text-base">
+                            <User className="w-4 h-4 text-muted-foreground" /> Nombre y Apellido
+                            </Label>
+                            <Input
+                                id="representative"
+                                name="representative"
+                                type="text"
+                                defaultValue={player.representative || ""}
+                                className="h-12 text-lg"
+                                placeholder="Nombre completo del representante"
+                            />
+                        </div>
+                        <div className="space-y-3">
+                            <Label htmlFor="representative_phone" className="flex items-center gap-2 text-base">
+                            <Phone className="w-4 h-4 text-muted-foreground" /> Teléfono
+                            </Label>
+                            <Input
+                                id="representative_phone"
+                                name="representative_phone"
+                                type="tel"
+                                defaultValue={player.representative_phone || ""}
+                                className="h-12 text-lg"
+                                placeholder="+54 9 ..."
                             />
                         </div>
                     </div>
@@ -384,14 +462,14 @@ export default async function PlayerDashboard() {
                     </h3>
                     <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-3">
-                            <Label htmlFor="medical_insurance" className="flex items-center gap-2 text-base">
+                            <Label htmlFor="health_insurance" className="flex items-center gap-2 text-base">
                             <Heart className="w-4 h-4 text-muted-foreground" /> Obra Social
                             </Label>
                             <Input
-                                id="medical_insurance"
-                                name="medical_insurance"
+                                id="health_insurance"
+                                name="health_insurance"
                                 type="text"
-                                defaultValue={player.medical_insurance || ""}
+                                defaultValue={player.health_insurance || ""}
                                 className="h-12 text-lg"
                                 placeholder="Ej: OSDE, IAPOS"
                             />
