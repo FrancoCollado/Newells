@@ -7,11 +7,10 @@ import { useState } from "react"
 import { Loader2 } from "lucide-react"
 
 const AREAS = [
+  "admin",
   "medica",
-  "tecnica",
   "psicologia",
   "nutricion",
-  "fisioterapia",
   "kinesiologia"
 ]
 

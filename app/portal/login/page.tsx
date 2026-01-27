@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { User, Lock } from "lucide-react"
+import { User, Lock, Eye, EyeOff } from "lucide-react"
 
 export default function PlayerLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -64,11 +65,22 @@ export default function PlayerLoginPage() {
                 <Input 
                   id="password" 
                   name="password" 
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="nombreyapellido" 
-                  className="bg-black border-zinc-700 text-white pl-9 placeholder:text-zinc-600"
+                  className="bg-black border-zinc-700 text-white pl-9 pr-10 placeholder:text-zinc-600"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300 focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
               <p className="text-[10px] text-zinc-500">
                 Tu contraseña es tu nombre completo en minúsculas y sin espacios (ej: lionelmessi).

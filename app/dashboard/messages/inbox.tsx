@@ -300,10 +300,38 @@ export function ProfessionalInbox({
         table: 'chat_messages', 
         filter: `conversation_id=eq.${selectedId}` 
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message])
-        if ((payload.new as Message).sender_type === "PLAYER") {
-             markAsReadAsProfessionalAction(selectedId)
+        const newMessage = payload.new as Message
+        
+        // Side Effect: Mark as read if from player
+        if (newMessage.sender_type === "PLAYER") {
+            setTimeout(() => {
+                markAsReadAsProfessionalAction(selectedId)
+            }, 0)
         }
+
+        setMessages(prev => {
+             // Deduplication & Optimistic Replacement Logic
+            const isMine = newMessage.sender_type === "PROFESSIONAL"
+            
+            // 1. If it's mine, try to find the optimistic temp message to replace
+            if (isMine) {
+                const tempIndex = prev.findIndex(m => 
+                    m.id.startsWith("temp-") && 
+                    m.content === newMessage.content
+                )
+                
+                if (tempIndex !== -1) {
+                    const newMessages = [...prev]
+                    newMessages[tempIndex] = newMessage
+                    return newMessages
+                }
+            }
+
+            // 2. If it's not mine (Player's) or I couldn't find the temp match, add it.
+            if (prev.some(m => m.id === newMessage.id)) return prev
+
+            return [...prev, newMessage]
+        })
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -313,7 +341,14 @@ export function ProfessionalInbox({
       }, (payload) => {
          setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m))
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            // console.log(`Connected to chat:${selectedId}`)
+        }
+        if (status === 'CHANNEL_ERROR') {
+            console.error(`Error connecting to realtime chat:${selectedId}`)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

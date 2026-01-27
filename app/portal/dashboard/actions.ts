@@ -7,9 +7,6 @@ import { revalidatePath } from "next/cache"
 export async function updatePlayerPhysicals(formData: FormData) {
   const session = await requirePlayerSession()
   
-  const weight = parseFloat(formData.get("weight") as string)
-  const height = parseFloat(formData.get("height") as string)
-  
   // Get and trim string values
   const document = (formData.get("document") as string)?.trim() || ""
   const birth_date = (formData.get("birth_date") as string)?.trim() || ""
@@ -17,38 +14,41 @@ export async function updatePlayerPhysicals(formData: FormData) {
   const phone = (formData.get("phone") as string)?.trim() || ""
   const address = (formData.get("address") as string)?.trim() || ""
   const nationality = (formData.get("nationality") as string)?.trim() || ""
+  
+  // New Fields
+  const emergency_contact_name = (formData.get("emergency_contact_name") as string)?.trim() || ""
+  const emergency_contact_phone = (formData.get("emergency_contact_phone") as string)?.trim() || ""
+  const medical_insurance = (formData.get("medical_insurance") as string)?.trim() || ""
 
   // --- VALIDACIONES ---
 
-  // 1. Validaciones Numéricas (Rango físico)
-  if (isNaN(weight) || isNaN(height)) {
-    return { error: "Peso o altura inválidos." }
-  }
-  if (weight < 40 || weight > 150) {
-    return { error: "El peso debe estar entre 40kg y 150kg." }
-  }
-  if (height < 140 || height > 230) {
-    return { error: "La altura debe estar entre 140cm y 230cm." }
-  }
-
-  // 2. Validaciones de Texto (Longitud y Formato)
+  // 1. Validaciones de Texto (Longitud y Formato)
   if (document.length > 20) return { error: "El documento es demasiado largo." }
   if (province.length > 100) return { error: "La provincia excede el límite de caracteres." }
   if (address.length > 150) return { error: "La dirección excede el límite de caracteres." }
   if (nationality.length > 50) return { error: "La nacionalidad excede el límite de caracteres." }
+  
+  if (emergency_contact_name.length > 100) return { error: "El nombre de contacto de emergencia es demasiado largo." }
+  if (medical_insurance.length > 100) return { error: "La obra social excede el límite de caracteres." }
 
-  // 3. Validación de Teléfono (Regex básico: números, espacios, +, -)
+  // 2. Validación de Teléfono (Regex básico: números, espacios, +, -)
   const phoneRegex = /^[0-9+\-\s()]*$/
-  if (phone.length > 0) {
-    if (!phoneRegex.test(phone)) {
-      return { error: "El formato del teléfono no es válido." }
-    }
-    if (phone.length < 6 || phone.length > 25) {
-      return { error: "El teléfono debe tener entre 6 y 25 caracteres." }
-    }
+  
+  const validatePhone = (p: string, label: string) => {
+      if (p.length > 0) {
+        if (!phoneRegex.test(p)) return `El formato del teléfono (${label}) no es válido.`
+        if (p.length < 6 || p.length > 25) return `El teléfono (${label}) debe tener entre 6 y 25 caracteres.`
+      }
+      return null
   }
 
-  // 4. Validación de Fecha de Nacimiento
+  const phoneError = validatePhone(phone, "Personal")
+  if (phoneError) return { error: phoneError }
+
+  const emergencyPhoneError = validatePhone(emergency_contact_phone, "Emergencia")
+  if (emergencyPhoneError) return { error: emergencyPhoneError }
+
+  // 3. Validación de Fecha de Nacimiento
   if (birth_date.length > 0) {
     const dateObj = new Date(birth_date)
     const now = new Date()
@@ -70,20 +70,25 @@ export async function updatePlayerPhysicals(formData: FormData) {
 
   // --- PREPARACIÓN DE DATOS ---
 
-  const updateData: any = { 
-    weight, 
-    height 
-  }
+  const updateData: any = {}
 
-  // Solo agregar campos si tienen valor (para no borrar datos existentes con strings vacíos si el form falla en enviarlos, 
-  // aunque con el value={defaultValue} del form esto es raro, es buena práctica)
-  
+  // Solo agregar campos si tienen valor
   if (document) updateData.document = document
   if (birth_date) updateData.birth_date = birth_date
   if (province) updateData.province = province
   if (phone) updateData.phone = phone
   if (address) updateData.address = address
   if (nationality) updateData.nationality = nationality
+  
+  if (emergency_contact_name) updateData.emergency_contact_name = emergency_contact_name
+  if (emergency_contact_phone) updateData.emergency_contact_phone = emergency_contact_phone
+  if (medical_insurance) updateData.medical_insurance = medical_insurance
+
+  // Si no hay datos para actualizar (porque height/weight se ignoran), retornar éxito o error
+  if (Object.keys(updateData).length === 0) {
+      // Si el usuario solo intentó editar read-only fields, no hacemos nada
+      return { success: true }
+  }
 
   const supabase = createAdminClient()
 

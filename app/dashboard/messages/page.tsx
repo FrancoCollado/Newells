@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase"
 import { getProfessionalConversations } from "@/lib/chat"
 import { MessagesClientLayout } from "./client-layout"
 import { UserRole } from "@/lib/auth"
+import { ManageAnnouncementsDialog } from "./manage-announcements-dialog"
 
 export const dynamic = 'force-dynamic'
 
@@ -39,16 +40,20 @@ export default async function MessagesPage() {
       <div className="h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header Content for Messages */}
         <header className="shrink-0 border-b pb-4 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Centro de Comunicación</h1>
               <p className="text-muted-foreground">Gestiona tus mensajes y conversaciones</p>
             </div>
             
-            <div className="hidden md:flex items-center gap-6 border-l pl-6">
-               <div className="text-center">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Conversaciones</p>
-                  <p className="text-lg font-bold leading-none">{conversations.length}</p>
+            <div className="flex items-center gap-2">
+               <ManageAnnouncementsDialog />
+               
+               <div className="hidden md:flex items-center gap-6 border-l pl-6">
+                  <div className="text-center">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Conversaciones</p>
+                      <p className="text-lg font-bold leading-none">{conversations.length}</p>
+                  </div>
                </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { createAdminClient } from "@/lib/supabase"
+import { PlayerStatusManager } from "@/components/player-status-manager"
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,12 +16,26 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const supabase = createAdminClient()
   const { data: conversation } = await supabase
     .from("chat_conversations")
-    .select("area, professional:auth.users(email)") // Simplified join, adjust if profile table exists
+    .select("area, professional_id")
     .eq("id", id)
     .single()
 
+  let professionalName = null
+  if (conversation?.professional_id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, role")
+        .eq("id", conversation.professional_id)
+        .single()
+      
+      if (profile) professionalName = profile.name
+  }
+
+  const { data: player } = await supabase.from("players").select("last_seen").eq("id", session.playerId).single()
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <PlayerStatusManager playerId={session.playerId} initialLastSeen={player?.last_seen} />
       <header className="shrink-0 flex items-center gap-3 p-4 border-b bg-background/80 backdrop-blur-md z-10 h-16 shadow-sm">
         <Link href="/portal/messages">
           <Button variant="ghost" size="icon" className="-ml-2">
@@ -28,13 +43,20 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           </Button>
         </Link>
         <div>
-          <h1 className="font-bold text-lg capitalize">
+          <h1 className="font-bold text-lg capitalize flex items-center gap-2">
             {conversation?.area || "Chat"}
           </h1>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span>Profesional en línea</span>
-          </div>
+          
+          {professionalName ? (
+             <p className="text-xs text-muted-foreground font-medium">
+                {professionalName}
+             </p>
+          ) : (
+             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span>Profesional en línea</span>
+             </div>
+          )}
         </div>
       </header>
 

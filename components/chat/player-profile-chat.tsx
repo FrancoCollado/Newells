@@ -121,10 +121,41 @@ export function PlayerProfileChat({ playerId, professionalArea, professionalId }
         table: 'chat_messages', 
         filter: `conversation_id=eq.${conversationId}` 
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message])
-        if ((payload.new as Message).sender_type === "PLAYER") {
-            markAsReadAsProfessionalAction(conversationId)
-        }
+        const newMessage = payload.new as Message
+
+        setMessages(prev => {
+            // Deduplication & Optimistic Replacement Logic
+            const isMine = newMessage.sender_type === "PROFESSIONAL"
+            
+            // 1. If it's mine, try to find the optimistic temp message to replace
+            if (isMine) {
+                const tempIndex = prev.findIndex(m => 
+                    m.id.startsWith("temp-") && 
+                    m.content === newMessage.content
+                )
+                
+                if (tempIndex !== -1) {
+                    const newMessages = [...prev]
+                    newMessages[tempIndex] = newMessage
+                    return newMessages
+                }
+            }
+
+            // 2. If it's not mine (Player's) or I couldn't find the temp match, add it.
+            // Check if it already exists by ID (paranoid check)
+            if (prev.some(m => m.id === newMessage.id)) return prev
+            
+            const updated = [...prev, newMessage]
+            
+            // If message is from player, we should mark it as read potentially
+            // (Though doing it here might be spammy, usually handled by viewport or separate logic)
+            if (newMessage.sender_type === "PLAYER") {
+                // Trigger server action fire-and-forget
+                markAsReadAsProfessionalAction(conversationId)
+            }
+            
+            return updated
+        })
       })
       .on('postgres_changes', {
         event: 'UPDATE',

@@ -60,12 +60,31 @@ export async function sendMessageAction(conversationId: string, content: string)
   
   try {
     await verifyConversationOwnership(conversationId, session.playerId)
+
+    // Rate Limit Check
+    const supabase = createAdminClient()
+    const { data: lastMsg } = await supabase
+      .from("chat_messages")
+      .select("created_at")
+      .eq("sender_id", session.playerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (lastMsg) {
+      const timeSinceLast = Date.now() - new Date(lastMsg.created_at).getTime()
+      if (timeSinceLast < 1000) { // 1 second limit
+        throw new Error("Estás enviando mensajes muy rápido. Espera un momento.")
+      }
+    }
+
     await sendMessage(conversationId, "PLAYER", session.playerId, content)
     revalidatePath(`/portal/messages/${conversationId}`)
     revalidatePath(`/portal/messages`)
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to send message:", error)
-    throw error // Let the UI handle the error state
+    if (error.message.includes("rápido")) throw error // Re-throw rate limit error for UI
+    throw new Error("No se pudo enviar el mensaje")
   }
 }
 
@@ -81,7 +100,7 @@ export async function markAsReadAction(conversationId: string) {
   try {
     await verifyConversationOwnership(conversationId, session.playerId)
     await markMessagesAsRead(conversationId, "PLAYER")
-    revalidatePath(`/portal/messages`)
+    // revalidatePath(`/portal/messages`) // Removed to prevent Router update during render
   } catch (error) {
     console.error("Failed to mark as read:", error)
   }
