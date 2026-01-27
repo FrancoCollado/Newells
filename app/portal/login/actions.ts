@@ -70,11 +70,13 @@ export async function loginPlayer(formData: FormData) {
       }
   }
 
-  // 1.5 Deduplicar resultados por nombre
+  // 1.5 Deduplicar resultados por nombre (insensible a acentos)
   // Si aparece la misma persona en varias divisiones, nos quedamos con la primera
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  
   const uniquePlayers = new Map()
   players.forEach(p => {
-    const key = p.name.toLowerCase().trim()
+    const key = normalize(p.name)
     if (!uniquePlayers.has(key)) {
       uniquePlayers.set(key, p)
     }
@@ -86,16 +88,40 @@ export async function loginPlayer(formData: FormData) {
   }
 
   if (players.length > 1) {
-    // Si hay múltiples, intentamos ver si alguno coincide exactamente
-    const exactMatch = players.find(p => p.name.toLowerCase() === name.trim().toLowerCase())
-    if (!exactMatch) {
-        return { 
-            error: `Hay ${players.length} jugadores con nombres similares. Sé más específico.` 
-        }
+    // Definimos el orden de prioridad de las divisiones (de mayor a menor)
+    const divisionPriority: Record<string, number> = {
+      "1eralocal": 100,
+      "primera": 100,
+      "reserva": 90,
+      "4ta": 80,
+      "5ta": 70,
+      "6ta": 60,
+      "7ma": 50,
+      "8va": 40,
+      "9na": 30,
+      "10ma": 20,
+      "11": 10,
+      "12": 5,
+      "13": 1
     }
-    // Si hay match exacto, usamos ese
-    players.length = 0
-    players.push(exactMatch)
+
+    // Ordenamos: Mayor prioridad primero. Si no está en la lista, prioridad 0.
+    players.sort((a, b) => {
+      const priorityA = divisionPriority[a.division.toLowerCase()] || 0
+      const priorityB = divisionPriority[b.division.toLowerCase()] || 0
+      return priorityB - priorityA
+    })
+
+    // Intentamos ver si alguno coincide exactamente con el input para darle preferencia total
+    const normalizedInput = normalize(name)
+    const exactMatch = players.find(p => normalize(p.name) === normalizedInput)
+    
+    if (exactMatch) {
+        players = [exactMatch]
+    } else {
+        // Si no hay match exacto, simplemente nos quedamos con el de división más alta
+        players = [players[0]]
+    }
   }
 
   const player = players[0]
@@ -103,14 +129,13 @@ export async function loginPlayer(formData: FormData) {
   // 2. Validación Flexible de Contraseña
   // Estrategia: Tokenizar -> Ordenar Alfabéticamente -> Unir
   
-  const cleanString = (str: string) => str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')
-  const getTokens = (str: string) => cleanString(str).split(/\s+/).filter(Boolean)
+  // Usamos la misma normalización que para el nombre para que 'Ramón' -> 'ramon'
+  const getTokens = (str: string) => normalize(str).split(/\s+/).filter(Boolean)
 
   const nameTokens = getTokens(player.name)
-  const inputRaw = password.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const inputRaw = normalize(password).replace(/\s+/g, '')
 
   // Generar permutaciones simples del nombre real para aceptar "apellidonombre" todo junto
-  // Para 2 o 3 nombres es eficiente.
   const permutations: string[] = []
   
   const permute = (arr: string[], m: string[] = []) => {
