@@ -45,8 +45,12 @@ export default async function PlayerDashboard() {
     )
   }
 
-  // Helper to format name
-  const firstName = player.name.split(' ')[0];
+  // Helper to format name for display
+  const displayName = player.name.includes(',') 
+    ? player.name.split(',').reverse().map(s => s.trim()).join(' ')
+    : player.name;
+    
+  const firstName = displayName.split(' ')[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,7 +65,7 @@ export default async function PlayerDashboard() {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="font-semibold">{player.name}</p>
+                <p className="font-semibold">{displayName}</p>
                 <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white">
                   {player.category || player.division}
                 </Badge>
@@ -107,7 +111,7 @@ export default async function PlayerDashboard() {
                   <Avatar className="w-20 h-20 md:w-32 md:h-32 border-4 border-white/10 shadow-2xl relative">
                     <AvatarImage src={player.photo || ""} className="object-cover" />
                     <AvatarFallback className="text-2xl font-bold bg-zinc-800 text-zinc-400">
-                      {player.name.substring(0, 2).toUpperCase()}
+                      {displayName.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {/* Active Status Indicator */}
@@ -117,7 +121,7 @@ export default async function PlayerDashboard() {
                 <div className="text-center md:text-left space-y-3 flex-1">
 
                   <div>
-                    <h3 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">{player.name}</h3>
+                    <h3 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">{displayName}</h3>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-zinc-300">
                       <Badge variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 px-3 py-1 text-sm">
                         <Shirt className="w-4 h-4 mr-2" />
