@@ -14,7 +14,8 @@ import {
   Flag,
   Phone,
   MapPin,
-  Loader2
+  Loader2,
+  Briefcase
 } from "lucide-react"
 
 interface PortalProfileFormProps {
@@ -171,7 +172,7 @@ export function PortalProfileForm({ player }: PortalProfileFormProps) {
 
         <div className="space-y-3">
             <Label htmlFor="address" className="flex items-center gap-2 text-base">
-            <MapPin className="w-4 h-4 text-muted-foreground" /> Domicilio
+            <MapPin className="w-4 h-4 text-muted-foreground" /> Domicilio Personal
             </Label>
             <div className="relative group">
             <Input 
@@ -180,7 +181,87 @@ export function PortalProfileForm({ player }: PortalProfileFormProps) {
                 type="text"
                 defaultValue={player.address || ""} 
                 className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
-                placeholder="Ej: Calle 123"
+                placeholder="Ej: Calle 123 (Origen)"
+            />
+            </div>
+        </div>
+
+        <div className="space-y-3">
+            <Label htmlFor="rosario_address" className="flex items-center gap-2 text-base">
+            <MapPin className="w-4 h-4 text-muted-foreground" /> Domicilio en Rosario
+            </Label>
+            <div className="relative group">
+            <Input 
+                id="rosario_address" 
+                name="rosario_address" 
+                type="text"
+                defaultValue={player.rosario_address || ""} 
+                className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
+                placeholder="Ej: Calle Rosario 456"
+            />
+            </div>
+        </div>
+
+        <div className="space-y-3">
+            <Label htmlFor="passport_number" className="flex items-center gap-2 text-base">
+            <CreditCard className="w-4 h-4 text-muted-foreground" /> Pasaporte
+            </Label>
+            <div className="relative group">
+            <Input 
+                id="passport_number" 
+                name="passport_number" 
+                type="text"
+                defaultValue={player.passport_number || ""} 
+                className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
+                placeholder="Número de pasaporte"
+            />
+            </div>
+        </div>
+
+        <div className="space-y-3">
+            <Label htmlFor="passport_origin" className="flex items-center gap-2 text-base">
+            <Flag className="w-4 h-4 text-muted-foreground" /> Pasaporte (Origen/Emisión)
+            </Label>
+            <div className="relative group">
+            <Input 
+                id="passport_origin" 
+                name="passport_origin" 
+                type="text"
+                defaultValue={player.passport_origin || ""} 
+                className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
+                placeholder="Ej: Renovado en Italia"
+            />
+            </div>
+        </div>
+
+        <div className="space-y-3">
+            <Label htmlFor="representative" className="flex items-center gap-2 text-base">
+            <Briefcase className="w-4 h-4 text-muted-foreground" /> Representante
+            </Label>
+            <div className="relative group">
+            <Input 
+                id="representative" 
+                name="representative" 
+                type="text"
+                defaultValue={player.representative || ""} 
+                className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
+                placeholder="Nombre y Apellido"
+            />
+            </div>
+        </div>
+
+        <div className="space-y-3">
+            <Label htmlFor="representative_phone" className="flex items-center gap-2 text-base">
+            <Phone className="w-4 h-4 text-muted-foreground" /> Tel. Representante
+            </Label>
+            <div className="relative group">
+            <Input 
+                id="representative_phone" 
+                name="representative_phone" 
+                type="tel"
+                defaultValue={player.representative_phone || ""} 
+                className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
+                placeholder="Ej: +54 9 ..."
             />
             </div>
         </div>
