@@ -13,6 +13,7 @@ import Link from "next/link"
 import { getPlayerConversations } from "@/lib/chat"
 import { MessagesBadge } from "./messages-badge"
 import { PlayerStatusManager } from "@/components/player-status-manager"
+import { AnnouncementsFeed } from "./announcements-feed"
 
 export default async function PlayerDashboard() {
   const session = await requirePlayerSession()
@@ -146,6 +147,12 @@ export default async function PlayerDashboard() {
 
 
 
+
+        {/* Announcements Feed */}
+        <AnnouncementsFeed 
+          playerId={player.id} 
+          division={player.category || player.division || ""} 
+        />
 
         {/* Messages Shortcut */}
         <MessagesBadge 

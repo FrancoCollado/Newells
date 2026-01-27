@@ -71,10 +71,12 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
 
         // Side Effect: Mark as read if from professional
         if (newMessage.sender_type === "PROFESSIONAL") {
-            startTransition(async () => {
-                await markAsReadAction(conversationId)
-                router.refresh()
-            })
+            setTimeout(() => {
+                startTransition(async () => {
+                    await markAsReadAction(conversationId)
+                    router.refresh()
+                })
+            }, 0)
         }
 
         setMessages(prev => {

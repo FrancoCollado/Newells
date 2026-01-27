@@ -304,7 +304,9 @@ export function ProfessionalInbox({
         
         // Side Effect: Mark as read if from player
         if (newMessage.sender_type === "PLAYER") {
-            markAsReadAsProfessionalAction(selectedId)
+            setTimeout(() => {
+                markAsReadAsProfessionalAction(selectedId)
+            }, 0)
         }
 
         setMessages(prev => {
