@@ -22,6 +22,22 @@ export async function sendMessageAsProfessionalAction(conversationId: string, co
   // Basic verification: Ensure conversation exists (RLS handles the rest)
   const { data: conv } = await supabase.from("chat_conversations").select("id").eq("id", conversationId).single()
   if (!conv) throw new Error("Conversation not found")
+
+  // Rate Limit Check
+  const { data: lastMsg } = await supabase
+    .from("chat_messages")
+    .select("created_at")
+    .eq("sender_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  if (lastMsg) {
+    const timeSinceLast = Date.now() - new Date(lastMsg.created_at).getTime()
+    if (timeSinceLast < 1000) {
+      throw new Error("Envío demasiado rápido.")
+    }
+  }
   
   await sendMessage(conversationId, "PROFESSIONAL", user.id, content)
   revalidatePath(`/dashboard/messages`)

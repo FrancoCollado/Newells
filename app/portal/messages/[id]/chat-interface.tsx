@@ -129,6 +129,10 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
   // Load More (Older) Messages
   const loadOlderMessages = async () => {
     if (loadingMore || !hasMore) return
+    
+    const scrollContainer = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    const previousScrollHeight = scrollContainer?.scrollHeight || 0;
+
     setLoadingMore(true)
     
     try {
@@ -140,6 +144,14 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
       if (olderMessages.length > 0) {
         setMessages(prev => [...olderMessages, ...prev])
         setMsgPage(nextPage)
+
+        // Restore scroll position
+        requestAnimationFrame(() => {
+            if (scrollContainer) {
+                const newScrollHeight = scrollContainer.scrollHeight;
+                scrollContainer.scrollTop = newScrollHeight - previousScrollHeight;
+            }
+        });
       }
     } catch (error) {
       console.error("Error loading history:", error)
@@ -162,12 +174,12 @@ export function ChatInterface({ conversationId, initialMessages, currentUserId }
     return () => observer.disconnect()
   }, [hasMore, loadingMore, msgPage])
 
-  // Scroll to bottom only on INITIAL load or MY messages
+  // Scroll to bottom only on INITIAL load
   useEffect(() => {
     if (msgPage === 0) {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+        bottomRef.current?.scrollIntoView({ behavior: "instant" })
     }
-  }, [messages.length === initialMessages.length])
+  }, []) // Empty dependency array to run only once on mount (or rely on ref)
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
