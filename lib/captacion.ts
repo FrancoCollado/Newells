@@ -4,11 +4,12 @@ export interface JugadorRow {
   apellido_nombre: string
   categoria: string
   posicion: string
-  contacto: string
-  telefono: string
   club: string
+  telefono: string
+  contacto: string
   captador: string
   pension: string
+  caracteristicas: string // <-- Agregada
   puntaje: string
   volver_a_citar: string
 }
@@ -19,88 +20,57 @@ export interface CaptacionInforme {
   seccion: string
   subido_por: string
   created_at: string
-  contenido: JugadorRow[] // Array con las filas del excel
+  contenido: JugadorRow[]
+  fotos?: string[] 
 }
 
 export async function getCaptacionInformes(seccion: string): Promise<CaptacionInforme[]> {
-  try {
-    const { data, error } = await supabase
-      .from("captacion_informes")
-      .select("*")
-      .eq("seccion", seccion)
-      .order("created_at", { ascending: false })
-
-    if (error) throw error
-    return data || []
-  } catch (error) {
-    console.error("Error fetching captacion informes:", error)
-    return []
-  }
+  const { data } = await supabase
+    .from("captacion_informes")
+    .select("*")
+    .eq("seccion", seccion)
+    .order("created_at", { ascending: false })
+  return data || []
 }
 
 export async function createCaptacionInforme(
   titulo: string,
   seccion: string,
   subido_por: string,
-  contenido: JugadorRow[]
+  contenido: JugadorRow[],
+  fotoFiles?: File[]
 ) {
   try {
-    const { error } = await supabase
-      .from("captacion_informes")
-      .insert({
-        titulo,
-        seccion,
-        subido_por,
-        contenido // Supabase convierte esto a JSONB automáticamente
-      })
-
-    if (error) throw error
-    return { success: true }
+    let fotosUrls: string[] = [];
+    if (fotoFiles && fotoFiles.length > 0) {
+      for (const file of fotoFiles) {
+        const fileName = `${crypto.randomUUID()}.${file.name.split(".").pop()}`;
+        const filePath = `${seccion.replace(/\s+/g, '_')}/${fileName}`;
+        const { error: uploadError } = await supabase.storage.from("captacion_fotos").upload(filePath, file);
+        if (!uploadError) {
+          const { data } = supabase.storage.from("captacion_fotos").getPublicUrl(filePath);
+          fotosUrls.push(data.publicUrl);
+        }
+      }
+    }
+    const { error } = await supabase.from("captacion_informes").insert({
+      titulo, seccion, subido_por, contenido, fotos: fotosUrls
+    })
+    return { success: !error, error: error?.message }
   } catch (error: any) {
-    console.error("Error creating captacion informe:", error)
     return { success: false, error: error.message }
   }
 }
 
 export async function deleteCaptacionInforme(id: string) {
-  try {
-    const { error } = await supabase
-      .from("captacion_informes")
-      .delete()
-      .eq("id", id)
-
-    if (error) throw error
-    return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
-  }
+  const { error } = await supabase.from("captacion_informes").delete().eq("id", id)
+  return { success: !error }
 }
 
-// Agregar esto a tu archivo lib/captacion.ts
-
-/**
- * Busca un jugador por nombre en todos los informes de todas las secciones
- */
 export async function searchJugadorGlobal(nombre: string): Promise<CaptacionInforme[]> {
-  try {
-    // Traemos todos los informes para filtrar localmente (es más preciso con JSONB)
-    const { data, error } = await supabase
-      .from("captacion_informes")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    // Filtramos los informes donde al menos un jugador coincida con el nombre
-    const resultados = (data as CaptacionInforme[]).filter(informe => 
-      informe.contenido.some(jugador => 
-        jugador.apellido_nombre.toLowerCase().includes(nombre.toLowerCase())
-      )
-    );
-
-    return resultados;
-  } catch (error) {
-    console.error("Error en searchJugadorGlobal:", error);
-    return [];
-  }
+  const { data } = await supabase.from("captacion_informes").select("*");
+  if (!data) return [];
+  return (data as CaptacionInforme[]).filter(inf => 
+    inf.contenido.some(j => j.apellido_nombre.toLowerCase().includes(nombre.toLowerCase()))
+  );
 }
