@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { User, Lock, Eye, EyeOff } from "lucide-react"
+import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function PlayerLoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +43,13 @@ export default function PlayerLoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit(new FormData(e.currentTarget));
+            }} 
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <Label htmlFor="name" className="text-zinc-200">Nombre Completo</Label>
               <div className="relative">
@@ -54,6 +60,7 @@ export default function PlayerLoginPage() {
                   placeholder="Ej: Lionel Messi" 
                   className="bg-black border-zinc-700 text-white pl-9 placeholder:text-zinc-600"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -69,11 +76,13 @@ export default function PlayerLoginPage() {
                   placeholder="nombreyapellido" 
                   className="bg-black border-zinc-700 text-white pl-9 pr-10 placeholder:text-zinc-600"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300 focus:outline-none"
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -98,7 +107,14 @@ export default function PlayerLoginPage() {
               className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
               disabled={loading}
             >
-              {loading ? "Buscando..." : "Ingresar"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Buscando...
+                </>
+              ) : (
+                "Ingresar"
+              )}
             </Button>
           </form>
         </CardContent>

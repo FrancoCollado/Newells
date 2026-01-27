@@ -19,12 +19,14 @@ export async function loginPlayer(formData: FormData) {
   const supabase = createAdminClient()
   
   // 1. Búsqueda Flexible de Jugador
-  // Dividimos el nombre buscado en términos para encontrar coincidencias parciales o desordenadas
+  // Limpiamos el input de caracteres especiales para la búsqueda
+  const cleanForSearch = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, " ").trim()
+  
   let dbQuery = supabase
     .from("players")
     .select("id, name, division")
   
-  const searchTerms = name.trim().split(/\s+/).filter(Boolean)
+  const searchTerms = cleanForSearch(name).split(/\s+/).filter(Boolean)
   
   if (searchTerms.length > 0) {
     searchTerms.forEach(term => {
@@ -42,10 +44,7 @@ export async function loginPlayer(formData: FormData) {
   let players = playersFound || []
 
   // Fallback: Fuzzy Search en memoria si no hay resultados directos
-  // Esto permite encontrar "Lionel Messi" si el usuario escribe "messilionel" o "lionelmessi" todo junto
   if (players.length === 0) {
-      // Traemos una lista ligera de nombres para comparar
-      // Optimización: Podríamos traer solo activos, etc.
       const { data: allPlayers } = await supabase
         .from("players")
         .select("id, name, division")
@@ -55,12 +54,9 @@ export async function loginPlayer(formData: FormData) {
           
           players = allPlayers.filter(p => {
               const cleanName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
-              // Chequeamos match directo o inverso
               if (cleanName.includes(cleanInput) || cleanInput.includes(cleanName)) return true
               
-              // Chequeamos inversión total (messilionel vs lionelmessi)
-              // Generamos permutaciones simples del nombre DB
-              const tokens = p.name.toLowerCase().split(/\s+/).filter(Boolean)
+              const tokens = p.name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
               if (tokens.length === 2) {
                   const reverse = tokens[1] + tokens[0]
                   if (reverse === cleanInput) return true
@@ -70,9 +66,8 @@ export async function loginPlayer(formData: FormData) {
       }
   }
 
-  // 1.5 Deduplicar resultados por nombre (insensible a acentos)
-  // Si aparece la misma persona en varias divisiones, nos quedamos con la primera
-  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  // 1.5 Deduplicar resultados por nombre (insensible a acentos y puntuación)
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
   
   const uniquePlayers = new Map()
   players.forEach(p => {
