@@ -82,11 +82,11 @@ export function AppSidebar({ user, onLogout, onOpenCaptacion, onOpenReadaptacion
                 <SidebarMenuButton 
                   onClick={() => router.push("/dashboard")} 
                   isActive={pathname === "/dashboard"}
-                  tooltip="Dashboard"
+                  tooltip="Inicio"
                   className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
                 >
                   <LayoutDashboard className="text-muted-foreground group-data-[active=true]:text-red-700" />
-                  <span>Dashboard</span>
+                  <span>Inicio</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               
