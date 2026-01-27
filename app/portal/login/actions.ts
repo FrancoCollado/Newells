@@ -18,42 +18,124 @@ export async function loginPlayer(formData: FormData) {
 
   const supabase = createAdminClient()
   
-  // Buscar coincidencia por nombre (insensible a mayúsculas/minúsculas)
-  const { data: players, error } = await supabase
+  // 1. Búsqueda Flexible de Jugador
+  // Dividimos el nombre buscado en términos para encontrar coincidencias parciales o desordenadas
+  let dbQuery = supabase
     .from("players")
     .select("id, name, division")
-    .ilike("name", name.trim())
+  
+  const searchTerms = name.trim().split(/\s+/).filter(Boolean)
+  
+  if (searchTerms.length > 0) {
+    searchTerms.forEach(term => {
+      dbQuery = dbQuery.ilike("name", `%${term}%`)
+    })
+  }
+
+  const { data: playersFound, error } = await dbQuery
 
   if (error) {
     console.error("Error en login:", error)
     return { error: "Error de conexión. Intenta nuevamente." }
   }
 
-  if (!players || players.length === 0) {
+  let players = playersFound || []
+
+  // Fallback: Fuzzy Search en memoria si no hay resultados directos
+  // Esto permite encontrar "Lionel Messi" si el usuario escribe "messilionel" o "lionelmessi" todo junto
+  if (players.length === 0) {
+      // Traemos una lista ligera de nombres para comparar
+      // Optimización: Podríamos traer solo activos, etc.
+      const { data: allPlayers } = await supabase
+        .from("players")
+        .select("id, name, division")
+        
+      if (allPlayers) {
+          const cleanInput = name.toLowerCase().replace(/[^a-z0-9]/g, '')
+          
+          players = allPlayers.filter(p => {
+              const cleanName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+              // Chequeamos match directo o inverso
+              if (cleanName.includes(cleanInput) || cleanInput.includes(cleanName)) return true
+              
+              // Chequeamos inversión total (messilionel vs lionelmessi)
+              // Generamos permutaciones simples del nombre DB
+              const tokens = p.name.toLowerCase().split(/\s+/).filter(Boolean)
+              if (tokens.length === 2) {
+                  const reverse = tokens[1] + tokens[0]
+                  if (reverse === cleanInput) return true
+              }
+              return false
+          })
+      }
+  }
+
+  if (players.length === 0) {
     return { error: "Jugador no encontrado." }
   }
 
   if (players.length > 1) {
-    return { 
-      error: "Hay más de un jugador con este nombre. Contacta a tu Coordinador." 
+    // Si hay múltiples, intentamos ver si alguno coincide exactamente
+    const exactMatch = players.find(p => p.name.toLowerCase() === name.trim().toLowerCase())
+    if (!exactMatch) {
+        return { 
+            error: `Hay ${players.length} jugadores con nombres similares. Sé más específico.` 
+        }
     }
+    // Si hay match exacto, usamos ese
+    players.length = 0
+    players.push(exactMatch)
   }
 
   const player = players[0]
 
-  // Validar contraseña: nombre todo junto y en minúsculas
-  // Normalizamos el nombre real de la DB para generar la contraseña esperada
-  const expectedPassword = player.name.toLowerCase().replace(/\s+/g, '')
+  // 2. Validación Flexible de Contraseña
+  // Estrategia: Tokenizar -> Ordenar Alfabéticamente -> Unir
   
-  // Normalizamos el input del usuario también para ser amigables
-  const inputPassword = password.trim().toLowerCase().replace(/\s+/g, '')
+  const cleanString = (str: string) => str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')
+  const getTokens = (str: string) => cleanString(str).split(/\s+/).filter(Boolean)
 
-  if (inputPassword !== expectedPassword) {
+  const nameTokens = getTokens(player.name)
+  const inputRaw = password.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  // Generar permutaciones simples del nombre real para aceptar "apellidonombre" todo junto
+  // Para 2 o 3 nombres es eficiente.
+  const permutations: string[] = []
+  
+  const permute = (arr: string[], m: string[] = []) => {
+    if (arr.length === 0) {
+      permutations.push(m.join(''))
+    } else {
+      for (let i = 0; i < arr.length; i++) {
+        let curr = arr.slice()
+        let next = curr.splice(i, 1)
+        permute(curr.slice(), m.concat(next))
+      }
+    }
+  }
+  
+  // Limitamos a nombres de hasta 4 partes para evitar explosión factorial (4! = 24 checks, rápido)
+  if (nameTokens.length <= 4) {
+      permute(nameTokens)
+  } else {
+      // Si es muy largo, solo probamos directo e inverso simple (todo el string)
+      permutations.push(nameTokens.join(''))
+      permutations.push(nameTokens.slice().reverse().join(''))
+  }
+
+  // Validación final:
+  // 1. Input tiene los mismos tokens (con espacios) -> Cubierto por sort() o por permutations si escribe con espacios y clean los quita?
+  //    Si el usuario escribe "Messi Lionel", inputRaw es "messilionel". Está en permutations.
+  //    Si el usuario escribe "Lionel Messi", inputRaw es "lionelmessi". Está en permutations.
+  
+  const isValid = permutations.includes(inputRaw)
+
+  if (!isValid) {
     return { error: "Contraseña incorrecta." }
   }
 
     // Actualizar último acceso
-    await supabaseAdmin
+    await supabase
       .from("players")
       .update({ last_seen: new Date().toISOString() })
       .eq("id", player.id)

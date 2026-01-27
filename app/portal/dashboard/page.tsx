@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { Activity, Ruler, Weight, User, LogOut, ShieldAlert, Trophy, Timer, Goal, Shirt, CreditCard, MessageSquare, ChevronRight } from "lucide-react"
+import { Activity, Ruler, Weight, User, LogOut, ShieldAlert, Trophy, Timer, Goal, Shirt, CreditCard, MessageSquare, ChevronRight, MapPin, Calendar, Phone, Heart, Users, FileText, Globe } from "lucide-react"
 import Link from "next/link"
 import { getPlayerConversations } from "@/lib/chat"
 import { MessagesBadge } from "./messages-badge"
@@ -179,67 +179,229 @@ export default async function PlayerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <form action={updatePlayerPhysicals} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label htmlFor="height" className="flex items-center gap-2 text-base">
-                      <Ruler className="w-4 h-4 text-muted-foreground" /> Altura
-                    </Label>
-                    <div className="relative group">
-                      <Input
-                        id="height"
-                        name="height"
-                        type="number"
-                        defaultValue={player.height}
-                        className="pr-12 h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
-                        placeholder="180"
-                        min={140}
-                        max={210}
-                      />
-                      <span className="absolute right-4 top-3.5 text-muted-foreground font-medium">cm</span>
-                    </div>
-                  </div>
+              <form action={updatePlayerPhysicals} className="space-y-8">
+                
+                {/* Sección 1: Datos Físicos (Solo Lectura) */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Activity className="w-4 h-4" /> Datos Físicos
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="height" className="flex items-center gap-2 text-base">
+                            <Ruler className="w-4 h-4 text-muted-foreground" /> Altura
+                            </Label>
+                            <div className="relative group">
+                            <Input
+                                id="height"
+                                name="height"
+                                type="number"
+                                defaultValue={player.height}
+                                className="pr-12 h-12 text-lg transition-all border-zinc-200 bg-muted/50 text-muted-foreground cursor-not-allowed"
+                                placeholder="180"
+                                readOnly
+                            />
+                            <span className="absolute right-4 top-3.5 text-muted-foreground font-medium">cm</span>
+                            </div>
+                        </div>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="weight" className="flex items-center gap-2 text-base">
-                      <Weight className="w-4 h-4 text-muted-foreground" /> Peso
-                    </Label>
-                    <div className="relative group">
-                      <Input
-                        id="weight"
-                        name="weight"
-                        type="number"
-                        step="0.1"
-                        defaultValue={player.weight}
-                        className="pr-12 h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
-                        placeholder="75.5"
-                        min={40}
-                        max={120}
-                      />
-                      <span className="absolute right-4 top-3.5 text-muted-foreground font-medium">kg</span>
+                        <div className="space-y-3">
+                            <Label htmlFor="weight" className="flex items-center gap-2 text-base">
+                            <Weight className="w-4 h-4 text-muted-foreground" /> Peso
+                            </Label>
+                            <div className="relative group">
+                            <Input
+                                id="weight"
+                                name="weight"
+                                type="number"
+                                step="0.1"
+                                defaultValue={player.weight}
+                                className="pr-12 h-12 text-lg transition-all border-zinc-200 bg-muted/50 text-muted-foreground cursor-not-allowed"
+                                placeholder="75.5"
+                                readOnly
+                            />
+                            <span className="absolute right-4 top-3.5 text-muted-foreground font-medium">kg</span>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-
-                  <div className="space-y-3 md:col-span-2">
-                    <Label htmlFor="document" className="flex items-center gap-2 text-base">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" /> DNI / Documento
-                    </Label>
-                    <div className="relative group">
-                      <Input
-                        id="document"
-                        name="document"
-                        type="text"
-                        defaultValue={player.document || ""}
-                        className="h-12 text-lg transition-all focus:ring-red-500/20 border-zinc-200"
-                        placeholder="Ingresá tu número de documento"
-                      />
-                    </div>
-                  </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
+                <Separator />
+
+                {/* Sección 2: Datos Personales */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <User className="w-4 h-4" /> Datos Personales
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="document" className="flex items-center gap-2 text-base">
+                            <CreditCard className="w-4 h-4 text-muted-foreground" /> DNI / Documento
+                            </Label>
+                            <Input
+                                id="document"
+                                name="document"
+                                type="text"
+                                defaultValue={player.document || ""}
+                                className="h-12 text-lg"
+                                placeholder="Ingresá tu número de documento"
+                            />
+                        </div>
+                        <div className="space-y-3">
+                            <Label htmlFor="birth_date" className="flex items-center gap-2 text-base">
+                            <Calendar className="w-4 h-4 text-muted-foreground" /> Fecha de Nacimiento
+                            </Label>
+                            <Input
+                                id="birth_date"
+                                name="birth_date"
+                                type="date"
+                                defaultValue={player.birth_date ? new Date(player.birth_date).toISOString().split('T')[0] : ""}
+                                className="h-12 text-lg"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                {/* Sección 3: Datos de Origen */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Globe className="w-4 h-4" /> Datos de Origen
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="nationality" className="flex items-center gap-2 text-base">
+                            <FileText className="w-4 h-4 text-muted-foreground" /> Nacionalidad
+                            </Label>
+                            <Input
+                                id="nationality"
+                                name="nationality"
+                                type="text"
+                                defaultValue={player.nationality || ""}
+                                className="h-12 text-lg"
+                                placeholder="Ej: Argentina"
+                            />
+                        </div>
+                        <div className="space-y-3">
+                            <Label htmlFor="province" className="flex items-center gap-2 text-base">
+                            <MapPin className="w-4 h-4 text-muted-foreground" /> Provincia
+                            </Label>
+                            <Input
+                                id="province"
+                                name="province"
+                                type="text"
+                                defaultValue={player.province || ""}
+                                className="h-12 text-lg"
+                                placeholder="Ej: Santa Fe"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                {/* Sección 4: Contacto y Domicilio */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <MapPin className="w-4 h-4" /> Contacto y Domicilio
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="address" className="flex items-center gap-2 text-base">
+                            <MapPin className="w-4 h-4 text-muted-foreground" /> Dirección / Domicilio
+                            </Label>
+                            <Input
+                                id="address"
+                                name="address"
+                                type="text"
+                                defaultValue={player.address || ""}
+                                className="h-12 text-lg"
+                                placeholder="Calle y Altura, Ciudad"
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <Label htmlFor="phone" className="flex items-center gap-2 text-base">
+                                <Phone className="w-4 h-4 text-muted-foreground" /> Teléfono Personal
+                                </Label>
+                                <Input
+                                    id="phone"
+                                    name="phone"
+                                    type="tel"
+                                    defaultValue={player.phone || ""}
+                                    className="h-12 text-lg"
+                                    placeholder="+54 9 ..."
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <Label htmlFor="emergency_contact_phone" className="flex items-center gap-2 text-base">
+                                <Phone className="w-4 h-4 text-muted-foreground" /> Teléfono Padres
+                                </Label>
+                                <Input
+                                    id="emergency_contact_phone"
+                                    name="emergency_contact_phone"
+                                    type="tel"
+                                    defaultValue={player.emergency_contact_phone || ""}
+                                    className="h-12 text-lg"
+                                    placeholder="Teléfono de contacto familiar"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                {/* Sección 5: Datos Familiares (Emergencia) */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Datos Familiares
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="emergency_contact_name" className="flex items-center gap-2 text-base">
+                            <User className="w-4 h-4 text-muted-foreground" /> Nombre Padre/Madre/Tutor
+                            </Label>
+                            <Input
+                                id="emergency_contact_name"
+                                name="emergency_contact_name"
+                                type="text"
+                                defaultValue={player.emergency_contact_name || ""}
+                                className="h-12 text-lg"
+                                placeholder="Nombre completo del familiar"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                {/* Sección 6: Datos Médicos (Obra Social) */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Heart className="w-4 h-4" /> Datos Médicos
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="space-y-3">
+                            <Label htmlFor="medical_insurance" className="flex items-center gap-2 text-base">
+                            <Heart className="w-4 h-4 text-muted-foreground" /> Obra Social
+                            </Label>
+                            <Input
+                                id="medical_insurance"
+                                name="medical_insurance"
+                                type="text"
+                                defaultValue={player.medical_insurance || ""}
+                                className="h-12 text-lg"
+                                placeholder="Ej: OSDE, IAPOS"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t sticky bottom-0 bg-background/95 backdrop-blur py-4 z-10">
                   <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-medium px-8 h-11 shadow-lg shadow-red-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                    Guardar Actualización
+                    Guardar Cambios
                   </Button>
                 </div>
               </form>
