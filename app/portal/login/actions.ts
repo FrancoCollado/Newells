@@ -72,7 +72,7 @@ export async function loginPlayer(formData: FormData) {
 
   // 1.5 Deduplicar resultados por nombre (insensible a acentos)
   // Si aparece la misma persona en varias divisiones, nos quedamos con la primera
-  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim()
   
   const uniquePlayers = new Map()
   players.forEach(p => {
