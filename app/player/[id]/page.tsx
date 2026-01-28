@@ -274,7 +274,7 @@ export default function PlayerDetailPage() {
   const getAreaFromRole = (role?: string) => {
     switch (role) {
       case "medico": return "medica"
-      case "kinesiologo": return "kinesiologia"
+      case "kinesiologo":
       case "fisioterapeuta": return "fisioterapia"
       case "nutricionista": return "nutricion"
       case "psicologo": return "psicologia"

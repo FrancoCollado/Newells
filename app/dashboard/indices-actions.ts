@@ -76,6 +76,7 @@ export async function createIndiceAction(
   fileUrl: string | null,
   fileName: string | null,
   userName: string,
+  userId: string,
 ) {
   try {
     if (!division) {
@@ -96,6 +97,7 @@ export async function createIndiceAction(
       file_url: fileUrl,
       file_name: fileName,
       created_by: userName,
+      user_id: userId,
     })
 
     if (error) {
@@ -106,6 +108,33 @@ export async function createIndiceAction(
     return { success: true }
   } catch (error) {
     console.error("Unexpected error creating indice:", error)
+    return { success: false, error: "Error inesperado" }
+  }
+}
+
+export async function updateIndiceAction(
+  id: string,
+  observations: string,
+) {
+  try {
+    const supabase = await createServerClient()
+
+    const { error } = await supabase
+      .from("indices")
+      .update({
+        observations,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+
+    if (error) {
+      console.error("[v0] Error updating indice:", error)
+      return { success: false, error: "Error al actualizar el índice" }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error in updateIndiceAction:", error)
     return { success: false, error: "Error inesperado" }
   }
 }

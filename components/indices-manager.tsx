@@ -4,13 +4,13 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import type { IndiceType, IndiceSubtype, Indice } from "@/lib/indices"
 import { indiceTypeLabels, indiceSubtypeLabels } from "@/lib/indices"
-import { getIndicesByDivisionAction, createIndiceAction, deleteIndiceAction, uploadIndiceFileAction } from "@/app/dashboard/indices-actions"
+import { getIndicesByDivisionAction, createIndiceAction, deleteIndiceAction, uploadIndiceFileAction, updateIndiceAction } from "@/app/dashboard/indices-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Upload as LucideUpload, Download as LucideDownload, Trash2 as LucideTrash2, Loader2 as LucideLoader2, X as LucideX } from "lucide-react"
+import { Upload as LucideUpload, Download as LucideDownload, Trash2 as LucideTrash2, Loader2 as LucideLoader2, X as LucideX, Pencil as LucidePencil } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart3, Activity, Heart, TrendingUp } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
@@ -38,11 +38,15 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
   const [selectedType, setSelectedType] = useState<IndiceType | null>(null)
   const [selectedSubtype, setSelectedSubtype] = useState<IndiceSubtype | undefined>(undefined)
   const [showUploadForm, setShowUploadForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
   const [observations, setObservations] = useState("")
+  const [editObservations, setEditObservations] = useState("")
+  const [editingIndice, setEditingIndice] = useState<Indice | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]) // Declared selectedFiles variable
   const [indices, setIndices] = useState<Indice[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [updating, setUpdating] = useState(false)
 
   const indiceTypes: IndiceType[] = ["GPS", "RPE", "PAUTAS_FUERZA", "WELLNESS", "UNIDAD_ARBITRARIA", "ONDULACIONES", "EVALUACIONES"]
 
@@ -106,6 +110,7 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
           fileUrl,
           fileName,
           userName,
+          userId,
         )
 
         console.log("[v0] createIndiceAction result:", result)
@@ -140,6 +145,30 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
     setShowUploadForm(false)
     loadIndices()
     setUploading(false)
+  }
+
+  const handleUpdate = async () => {
+    if (!editingIndice) return
+    
+    setUpdating(true)
+    const result = await updateIndiceAction(editingIndice.id, editObservations)
+    
+    if (result.success) {
+      toast({
+        title: "Éxito",
+        description: "El registro se actualizó correctamente",
+      })
+      setShowEditForm(false)
+      setEditingIndice(null)
+      loadIndices()
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "No se pudo actualizar el registro",
+        variant: "destructive",
+      })
+    }
+    setUpdating(false)
   }
 
   const handleDelete = async (indice: Indice) => {
@@ -261,16 +290,32 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
                     </CardTitle>
                     <CardDescription className="text-xs">Por: {indice.created_by}</CardDescription>
                   </div>
-                  {canEdit && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(indice)}
-                    >
-                      <LucideTrash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex gap-1">
+                    {canEdit && (indice.user_id === userId || (!indice.user_id && indice.created_by === userName)) && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => {
+                            setEditingIndice(indice)
+                            setEditObservations(indice.observations || "")
+                            setShowEditForm(true)
+                          }}
+                        >
+                          <LucidePencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDelete(indice)}
+                        >
+                          <LucideTrash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pb-3">
@@ -290,6 +335,45 @@ export function IndicesManager({ division, userName, userId, onClose, canEdit = 
             </Card>
           ))}
         </div>
+      )}
+
+      {showEditForm && (
+        <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Editar Observaciones</DialogTitle>
+              <DialogDescription>Actualice las observaciones para este registro</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="editObservations">Observaciones</Label>
+                <Textarea
+                  id="editObservations"
+                  placeholder="Ingrese observaciones sobre este índice..."
+                  value={editObservations}
+                  onChange={(e) => setEditObservations(e.target.value)}
+                  rows={4}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowEditForm(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdate} disabled={updating} className="bg-red-700 hover:bg-red-800">
+                {updating ? (
+                  <>
+                    <LucideLoader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  "Guardar Cambios"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showUploadForm && canEdit && (

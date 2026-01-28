@@ -297,7 +297,7 @@ export default function AreasPage() {
     { id: "psicologica", label: "Psicológica", icon: Brain, color: "text-purple-600" },
     { id: "nutricional", label: "Nutricional", icon: Utensils, color: "text-green-600" },
     { id: "entrenamiento", label: "Entrenamiento", icon: Dumbbell, color: "text-blue-600" },
-    { id: "fisioterapia", label: "Fisioterapia", icon: Sparkles, color: "text-orange-600" },
+    { id: "fisioterapia", label: "Kinesiología", icon: Sparkles, color: "text-orange-600" },
     { id: "arqueros", label: "Arqueros", icon: Dumbbell, color: "text-cyan-600" },
     { id: "psicosocial", label: "Psicosocial", icon: Brain, color: "text-pink-600" },
     { id: "odontologia", label: "Odontología", icon: HeartPulse, color: "text-teal-600" },

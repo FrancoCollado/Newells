@@ -307,73 +307,73 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
           </div>
         )}
 
-        {/* VISUALIZADOR SE MANTIENE COMO DIALOG PORQUE ES SOLO LECTURA */}
+        {/* VISUALIZADOR EN PANTALLA COMPLETA */}
         {viewingInforme && (
-          <Dialog open={!!viewingInforme} onOpenChange={() => setViewingInforme(null)}>
-            <DialogContent className="max-w-[95vw] h-[88vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-slate-50" showCloseButton={false}>
-              <div className="p-4 bg-red-800 text-white flex justify-between items-center shrink-0">
-                <div>
-                   <DialogTitle className="text-xl font-bold italic uppercase text-white">{viewingInforme.titulo}</DialogTitle>
-                   <DialogDescription className="text-xs opacity-80 text-white/90">
-                     {viewingInforme.seccion} — {new Date(viewingInforme.created_at).toLocaleDateString()} — {viewingInforme.subido_por}
-                   </DialogDescription>
+          <div className="fixed inset-0 z-[70] bg-white flex flex-col">
+            {/* HEADER */}
+            <div className="p-4 bg-red-800 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h2 className="text-xl font-bold italic uppercase text-white">{viewingInforme.titulo}</h2>
+                <p className="text-xs opacity-80 text-white/90">
+                  {viewingInforme.seccion} — {new Date(viewingInforme.created_at).toLocaleDateString()} — {viewingInforme.subido_por}
+                </p>
+              </div>
+              <Button variant="ghost" className="text-white hover:bg-red-700" onClick={() => setViewingInforme(null)}>
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+
+            {/* CONTENIDO DEL INFORME */}
+            <div className="flex-1 overflow-auto p-4 bg-slate-50">
+              {viewingInforme.fotos && viewingInforme.fotos.length > 0 && (
+                <div className="mb-6 flex gap-4 overflow-x-auto pb-4">
+                  {viewingInforme.fotos.map((url, idx) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={idx} src={url} alt={`Foto ${idx}`} className="h-40 rounded-lg shadow-md border hover:scale-105 transition-transform" />
+                  ))}
                 </div>
-                <Button variant="ghost" className="text-white hover:bg-red-700" onClick={() => setViewingInforme(null)}>
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
+              )}
 
-              <div className="flex-1 overflow-auto p-4">
-                 {viewingInforme.fotos && viewingInforme.fotos.length > 0 && (
-                   <div className="mb-6 flex gap-4 overflow-x-auto pb-4">
-                     {viewingInforme.fotos.map((url, idx) => (
-                       // eslint-disable-next-line @next/next/no-img-element
-                       <img key={idx} src={url} alt={`Foto ${idx}`} className="h-40 rounded-lg shadow-md border hover:scale-105 transition-transform" />
-                     ))}
-                   </div>
-                 )}
-
-                 <div className="bg-white rounded-lg shadow border overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-sm min-w-[1500px]">
-                        <thead className="bg-slate-100 text-slate-700">
-                          <tr className="h-10 text-xs uppercase">
-                            <th className="px-3 border text-left w-[200px]">Nombre</th>
-                            <th className="px-1 border w-[60px]">Cat.</th>
-                            <th className="px-2 border w-[80px]">Pos.</th>
-                            <th className="px-3 border w-[150px]">Club</th>
-                            <th className="px-3 border w-[120px]">Tel.</th>
-                            <th className="px-3 border w-[150px]">Contacto</th>
-                            <th className="px-3 border w-[120px]">Cap.</th>
-                            <th className="px-2 border w-[80px]">Pensión</th>
-                            <th className="px-3 border text-left min-w-[400px]">Características</th>
-                            <th className="px-1 border w-[70px]">Puntaje</th>
-                            <th className="px-1 border w-[70px]">Citar</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {viewingInforme.contenido.map((row, i) => (
-                            <tr key={i} className="hover:bg-slate-50">
-                              <td className="border px-3 py-2 font-semibold">{row.apellido_nombre}</td>
-                              <td className="border px-1 py-2 text-center">{row.categoria}</td>
-                              <td className="border px-2 py-2 text-center">{row.posicion}</td>
-                              <td className="border px-3 py-2 text-slate-600">{row.club}</td>
-                              <td className="border px-3 py-2 text-xs">{row.telefono}</td>
-                              <td className="border px-3 py-2 text-slate-600 text-xs">{row.contacto}</td>
-                              <td className="border px-3 py-2 text-xs">{row.captador}</td>
-                              <td className="border px-1 py-2 text-center">{row.pension}</td>
-                              <td className="border px-3 py-2 whitespace-pre-wrap leading-relaxed text-slate-700">{row.caracteristicas}</td>
-                              <td className="border px-1 py-2 text-center font-bold text-red-700">{row.puntaje}</td>
-                              <td className="border px-1 py-2 text-center font-medium">{row.volver_a_citar}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                 </div>
+              <div className="bg-white rounded-lg shadow border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm min-w-[1800px]">
+                    <thead className="sticky top-0 bg-slate-800 text-white z-20">
+                      <tr className="h-12 uppercase text-xs">
+                        <th className="px-3 border border-slate-700 text-left w-[220px]">Nombre</th>
+                        <th className="px-1 border border-slate-700 w-[60px]">Cat.</th>
+                        <th className="px-2 border border-slate-700 w-[100px]">Pos.</th>
+                        <th className="px-3 border border-slate-700 w-[150px]">Club</th>
+                        <th className="px-3 border border-slate-700 w-[120px]">Tel.</th>
+                        <th className="px-3 border border-slate-700 w-[150px]">Contacto</th>
+                        <th className="px-3 border border-slate-700 w-[120px]">Cap.</th>
+                        <th className="px-2 border border-slate-700 w-[80px]">Pensión</th>
+                        <th className="px-3 border border-slate-700 text-left min-w-[450px]">Características</th>
+                        <th className="px-1 border border-slate-700 w-[70px]">Puntaje</th>
+                        <th className="px-1 border border-slate-700 w-[70px]">Citar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {viewingInforme.contenido.map((row, i) => (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="border px-3 py-4 font-semibold">{row.apellido_nombre}</td>
+                          <td className="border px-1 py-4 text-center">{row.categoria}</td>
+                          <td className="border px-2 py-4 text-center">{row.posicion}</td>
+                          <td className="border px-3 py-4 text-slate-600">{row.club}</td>
+                          <td className="border px-3 py-4 text-xs">{row.telefono}</td>
+                          <td className="border px-3 py-4 text-slate-600 text-xs">{row.contacto}</td>
+                          <td className="border px-3 py-4 text-xs">{row.captador}</td>
+                          <td className="border px-1 py-4 text-center">{row.pension}</td>
+                          <td className="border px-3 py-4 whitespace-pre-wrap leading-relaxed text-slate-700">{row.caracteristicas}</td>
+                          <td className="border px-1 py-4 text-center font-bold text-red-700">{row.puntaje}</td>
+                          <td className="border px-1 py-4 text-center font-medium">{row.volver_a_citar}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </div>
         )}
       </div>
     </div>

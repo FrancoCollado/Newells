@@ -164,7 +164,7 @@ export default function PlayerReportsPage() {
                     <TabsTrigger value="psicologo">Psicológicos</TabsTrigger>
                     <TabsTrigger value="entrenador">Entrenamiento</TabsTrigger>
                     <TabsTrigger value="nutricionista">Nutrición</TabsTrigger>
-                    <TabsTrigger value="fisioterapeuta">Fisioterapia</TabsTrigger>
+                    <TabsTrigger value="fisioterapeuta">Kinesiología</TabsTrigger>
                     <TabsTrigger value="psicosocial">Psicosocial</TabsTrigger>
                     <TabsTrigger value="odontologo">Odontología</TabsTrigger>
                     <TabsTrigger value="videoanalisis">Videoanalisis</TabsTrigger>

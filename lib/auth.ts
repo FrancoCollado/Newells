@@ -139,7 +139,7 @@ export function getRoleLabel(role: UserRole): string {
     entrenador: "Entrenador",
     entrenador_arqueros: "Entrenador de Arqueros",
     nutricionista: "Nutricionista",
-    fisioterapeuta: "Fisioterapeuta",
+    fisioterapeuta: "Kinesiólogo",
     dirigente: "Dirigente",
     administrador: "Administrador",
     kinesiologo: "Kinesiólogo",
