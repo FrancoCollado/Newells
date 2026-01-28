@@ -67,6 +67,18 @@ export async function deleteCaptacionInforme(id: string) {
   return { success: !error }
 }
 
+export async function updateCaptacionInforme(
+  id: string,
+  titulo: string,
+  contenido: JugadorRow[]
+) {
+  const { error } = await supabase
+    .from("captacion_informes")
+    .update({ titulo, contenido })
+    .eq("id", id)
+  return { success: !error, error: error?.message }
+}
+
 export async function searchJugadorGlobal(nombre: string): Promise<CaptacionInforme[]> {
   const { data } = await supabase.from("captacion_informes").select("*");
   if (!data) return [];
