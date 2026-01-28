@@ -44,6 +44,7 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
   const [newInformeTitle, setNewInformeTitle] = useState("")
   const [rows, setRows] = useState<JugadorRow[]>([{ ...EMPTY_ROW }])
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([])
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null)
 
   useEffect(() => { if (selectedSection) loadInformes() }, [selectedSection])
 
@@ -329,7 +330,13 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
                 <div className="mb-6 flex gap-4 overflow-x-auto pb-4">
                   {viewingInforme.fotos.map((url, idx) => (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img key={idx} src={url} alt={`Foto ${idx}`} className="h-40 rounded-lg shadow-md border hover:scale-105 transition-transform" />
+                    <img 
+                      key={idx} 
+                      src={url} 
+                      alt={`Foto ${idx}`} 
+                      className="h-40 rounded-lg shadow-md border hover:scale-105 transition-transform cursor-pointer" 
+                      onClick={() => setSelectedPhotoUrl(url)}
+                    />
                   ))}
                 </div>
               )}
@@ -373,6 +380,28 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* VISOR DE FOTO EN PANTALLA COMPLETA */}
+        {selectedPhotoUrl && (
+          <div 
+            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
+            onClick={() => setSelectedPhotoUrl(null)}
+          >
+            <Button 
+              variant="ghost" 
+              className="absolute top-4 right-4 text-white hover:bg-white/20 h-12 w-12 rounded-full"
+              onClick={(e) => { e.stopPropagation(); setSelectedPhotoUrl(null); }}
+            >
+              <X className="h-8 w-8" />
+            </Button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={selectedPhotoUrl} 
+              alt="Foto ampliada" 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-sm transition-transform duration-300 scale-95 animate-in zoom-in-95"
+            />
           </div>
         )}
       </div>
