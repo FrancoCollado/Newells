@@ -11,6 +11,7 @@ interface ProfessionalLayoutProps {
   onLogout: () => void
   onOpenCaptacion?: () => void
   onOpenReadaptacion?: () => void
+  onOpenRehabilitacion?: () => void // <--- NUEVA PROP AGREGADA
 }
 
 export function ProfessionalLayout({ 
@@ -18,7 +19,8 @@ export function ProfessionalLayout({
   user, 
   onLogout, 
   onOpenCaptacion,
-  onOpenReadaptacion 
+  onOpenReadaptacion,
+  onOpenRehabilitacion // <--- NUEVA PROP DESTRUCTURADA
 }: ProfessionalLayoutProps) {
   
   return (
@@ -28,6 +30,8 @@ export function ProfessionalLayout({
         onLogout={onLogout} 
         onOpenCaptacion={onOpenCaptacion}
         onOpenReadaptacion={onOpenReadaptacion}
+        // @ts-ignore - Ignoramos error de TS temporalmente hasta que actualices AppSidebar
+        onOpenRehabilitacion={onOpenRehabilitacion} // <--- PASAMOS LA PROP AL SIDEBAR
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-gradient-to-r from-red-700 to-black text-white px-4">

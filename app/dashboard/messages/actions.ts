@@ -52,3 +52,55 @@ export async function markAsReadAsProfessionalAction(conversationId: string) {
   // No revalidatePath here - Client handles state updates optimistically/realtime
   // revalidatePath(`/dashboard/messages`) 
 }
+
+export async function getPlayersOnLoanAction() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error("Unauthorized")
+
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, name, division, photo, last_seen")
+    .eq("is_on_loan", true)
+    .order("name")
+
+  if (error) throw error
+  return data
+}
+
+export async function createLoanConversationAction(playerId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error("Unauthorized")
+
+  // Check if a conversation already exists for this player (any area or specific)
+  // For simplicity, let's try to find a 'General' or 'Prestamo' conversation, or create 'Prestamo'
+  
+  const { data: existing } = await supabase
+    .from("chat_conversations")
+    .select("*")
+    .eq("player_id", playerId)
+    .in("area", ["General", "Prestamo"])
+    .limit(1)
+    .single()
+
+  if (existing) return existing
+
+  // Create new conversation
+  const { data: newConv, error } = await supabase
+    .from("chat_conversations")
+    .insert({
+      player_id: playerId,
+      area: "Prestamo",
+      professional_id: user.id 
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  
+  revalidatePath(`/dashboard/messages`)
+  return newConv
+}

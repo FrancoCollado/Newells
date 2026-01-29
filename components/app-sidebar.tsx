@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronUp,
   User2,
+  PlusSquare, // Importamos un icono para diferenciarlo de readaptación
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 
@@ -45,9 +46,17 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onLogout: () => void
   onOpenCaptacion?: () => void
   onOpenReadaptacion?: () => void
+  onOpenRehabilitacion?: () => void // <--- AGREGADO
 }
 
-export function AppSidebar({ user, onLogout, onOpenCaptacion, onOpenReadaptacion, ...props }: AppSidebarProps) {
+export function AppSidebar({ 
+  user, 
+  onLogout, 
+  onOpenCaptacion, 
+  onOpenReadaptacion, 
+  onOpenRehabilitacion, // <--- AGREGADO
+  ...props 
+}: AppSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
 
@@ -162,8 +171,16 @@ export function AppSidebar({ user, onLogout, onOpenCaptacion, onOpenReadaptacion
                
                <SidebarMenuItem>
                   <SidebarMenuButton onClick={onOpenReadaptacion} tooltip="Readaptación">
-                    <HeartPulse className="text-muted-foreground" />
+                    <Activity className="text-muted-foreground" />
                     <span>Readaptación</span>
+                  </SidebarMenuButton>
+               </SidebarMenuItem>
+
+               {/* NUEVO BOTÓN DE REHABILITACIÓN */}
+               <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onOpenRehabilitacion} tooltip="Rehabilitación">
+                    <HeartPulse className="text-muted-foreground" />
+                    <span>Rehabilitación</span>
                   </SidebarMenuButton>
                </SidebarMenuItem>
             </SidebarMenu>

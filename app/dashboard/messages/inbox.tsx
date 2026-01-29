@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Send, 
   Search, 
@@ -17,12 +18,15 @@ import {
   CheckCheck, 
   MessageSquare,
   Phone,
-  Video
+  Video,
+  User
 } from "lucide-react"
 import { 
   sendMessageAsProfessionalAction, 
   markAsReadAsProfessionalAction,
-  getProfessionalConversationsAction 
+  getProfessionalConversationsAction,
+  getPlayersOnLoanAction,
+  createLoanConversationAction
 } from "./actions"
 import { supabase } from "@/lib/supabase"
 import { formatPresence } from "@/lib/format-presence"
@@ -50,18 +54,28 @@ interface Message {
   is_read: boolean
 }
 
+interface LoanPlayer {
+    id: string
+    name: string
+    division: string
+    photo?: string
+    last_seen?: string | null
+}
+
 export function ProfessionalInbox({ 
   initialConversations 
 }: { 
   initialConversations: Conversation[] 
 }) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
+  const [loanPlayers, setLoanPlayers] = useState<LoanPlayer[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState("inbox")
   
   // Sidebar Pagination
   const [page, setPage] = useState(0)
@@ -81,6 +95,17 @@ export function ProfessionalInbox({
 
   const selectedConversation = conversations.find(c => c.id === selectedId)
   const filteredConversations = conversations;
+
+  const filteredLoanPlayers = loanPlayers.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Fetch Loan Players
+  useEffect(() => {
+    getPlayersOnLoanAction().then(data => {
+        if (data) setLoanPlayers(data)
+    })
+  }, [])
 
   // Presence Subscription (Online Status)
   useEffect(() => {
@@ -146,6 +171,8 @@ export function ProfessionalInbox({
 
   // Server-side Search Effect
   useEffect(() => {
+    if (activeTab !== "inbox") return
+
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.length > 0) {
         setIsSearching(true)
@@ -163,7 +190,7 @@ export function ProfessionalInbox({
     }, 400)
 
     return () => clearTimeout(delayDebounceFn)
-  }, [searchTerm])
+  }, [searchTerm, activeTab])
 
   // Infinite Scroll Logic for Sidebar
   const loadMoreConversations = async () => {
@@ -195,6 +222,8 @@ export function ProfessionalInbox({
 
   // Observer for Sidebar
   useEffect(() => {
+    if (activeTab !== "inbox") return
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loadingMore) {
@@ -205,7 +234,7 @@ export function ProfessionalInbox({
     )
     if (loadMoreRef.current) observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
-  }, [hasMore, loadingMore, page, searchTerm])
+  }, [hasMore, loadingMore, page, searchTerm, activeTab])
 
   // Load More (Older) Messages
   const loadOlderMessages = async () => {
@@ -428,102 +457,200 @@ export function ProfessionalInbox({
       console.error("Failed to send", error)
     }
   }
+  
+  const handleLoanPlayerClick = async (player: LoanPlayer) => {
+      // Check if conversation exists in current list
+      const existing = conversations.find(c => c.player_id === player.id)
+      
+      if (existing) {
+          setSelectedId(existing.id)
+          // Switch to inbox so they see the selected conv
+          setActiveTab("inbox")
+      } else {
+          try {
+              const newConv = await createLoanConversationAction(player.id)
+              // Update conversations list locally
+              const fullConv: Conversation = {
+                  ...newConv,
+                  unread_count: 0,
+                  player: {
+                      id: player.id,
+                      name: player.name,
+                      division: player.division,
+                      photo: player.photo,
+                      last_seen: player.last_seen
+                  }
+              }
+              setConversations(prev => [fullConv, ...prev])
+              setSelectedId(newConv.id)
+              setActiveTab("inbox")
+          } catch (error) {
+              console.error("Error creating conversation", error)
+          }
+      }
+  }
 
   return (
     <div className="flex h-full rounded-2xl border bg-background shadow-lg overflow-hidden ring-1 ring-border">
       {/* Sidebar List */}
       <div className="w-1/3 border-r bg-muted/10 flex flex-col min-w-[320px] h-full">
-        {/* Sidebar Header */}
-        <div className="shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
-          <h2 className="text-lg font-bold mb-4 px-1">Mensajes</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar..." 
-              className="pl-9 bg-background border-muted-foreground/20 rounded-xl focus-visible:ring-red-600" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+        <Tabs defaultValue="inbox" value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+            {/* Sidebar Header */}
+            <div className="shrink-0 p-4 border-b bg-background/50 backdrop-blur-sm">
+            <h2 className="text-lg font-bold mb-4 px-1">Mensajes</h2>
+            
+            <TabsList className="w-full mb-4">
+                <TabsTrigger value="inbox" className="flex-1">Bandeja</TabsTrigger>
+                <TabsTrigger value="loans" className="flex-1">Préstamos</TabsTrigger>
+            </TabsList>
 
-        {/* Conversation List */}
-        <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full custom-scrollbar">
-                <div className="flex flex-col gap-1 p-3">
-                    {filteredConversations.map((conv) => {
-                      const isOnline = onlineUsers.has(conv.player.id)
-                      const presenceText = formatPresence(conv.player.last_seen, isOnline)
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                placeholder="Buscar..." 
+                className="pl-9 bg-background border-muted-foreground/20 rounded-xl focus-visible:ring-red-600" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            </div>
 
-                      return (
-                        <button
-                            key={conv.id}
-                            onClick={() => setSelectedId(conv.id)}
-                            className={cn(
-                            "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative",
-                            selectedId === conv.id 
-                                ? "bg-red-50 dark:bg-red-900/10 shadow-sm border border-red-100 dark:border-red-900/30" 
-                                : "hover:bg-muted/60 border border-transparent"
-                            )}
-                        >
-                            {selectedId === conv.id && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-red-600 rounded-r-full" />
-                            )}
+            {/* Conversation List */}
+            <TabsContent value="inbox" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
+                <ScrollArea className="h-full custom-scrollbar">
+                    <div className="flex flex-col gap-1 p-3">
+                        {filteredConversations.map((conv) => {
+                        const isOnline = onlineUsers.has(conv.player.id)
+                        const presenceText = formatPresence(conv.player.last_seen, isOnline)
 
-                            <div className="relative shrink-0">
-                                <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
-                                    <AvatarImage src={conv.player?.photo} className="object-cover" />
-                                    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700 font-semibold text-muted-foreground">
-                                        {conv.player?.name?.substring(0,2).toUpperCase() || "??"}
-                                    </AvatarFallback>
-                                </Avatar>
-                                {isOnline && (
-                                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                        return (
+                            <button
+                                key={conv.id}
+                                onClick={() => setSelectedId(conv.id)}
+                                className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative",
+                                selectedId === conv.id 
+                                    ? "bg-red-50 dark:bg-red-900/10 shadow-sm border border-red-100 dark:border-red-900/30" 
+                                    : "hover:bg-muted/60 border border-transparent"
                                 )}
-                                {conv.unread_count > 0 && (
-                                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-background">
-                                        {conv.unread_count}
+                            >
+                                {selectedId === conv.id && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-red-600 rounded-r-full" />
+                                )}
+
+                                <div className="relative shrink-0">
+                                    <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                                        <AvatarImage src={conv.player?.photo} className="object-cover" />
+                                        <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700 font-semibold text-muted-foreground">
+                                            {conv.player?.name?.substring(0,2).toUpperCase() || "??"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    {isOnline && (
+                                    <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                                    )}
+                                    {conv.unread_count > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-background">
+                                            {conv.unread_count}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-0.5">
+                                    <span className={cn(
+                                        "font-semibold truncate text-sm",
+                                        selectedId === conv.id ? "text-red-900 dark:text-red-100" : "text-foreground"
+                                    )}>
+                                        {conv.player?.name || "Jugador"}
                                     </span>
-                                )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                                <span className={cn(
-                                    "font-semibold truncate text-sm",
-                                    selectedId === conv.id ? "text-red-900 dark:text-red-100" : "text-foreground"
-                                )}>
-                                    {conv.player?.name || "Jugador"}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                                    {conv.last_message_at ? format(new Date(conv.last_message_at), "HH:mm", { locale: es }) : ''}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 overflow-hidden">
-                                    <span className="text-xs text-muted-foreground truncate">
-                                      {conv.unread_count > 0 ? "Nuevo mensaje" : presenceText || "Ver conversación"}
+                                    <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
+                                        {conv.last_message_at ? format(new Date(conv.last_message_at), "HH:mm", { locale: es }) : ''}
                                     </span>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                        <span className="text-xs text-muted-foreground truncate">
+                                        {conv.unread_count > 0 ? "Nuevo mensaje" : presenceText || "Ver conversación"}
+                                        </span>
+                                    </div>
+                                </div>
+                                </div>
+                            </button>
+                        )
+                        })}
+                        
+                        {filteredConversations.length === 0 && !loadingMore && (
+                            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground opacity-60">
+                                <MessageSquare className="h-10 w-10 mb-3 stroke-1" />
+                                <p className="text-sm">Sin conversaciones.</p>
                             </div>
-                            </div>
-                        </button>
-                      )
-                    })}
-                    
-                    {filteredConversations.length === 0 && !loadingMore && (
-                        <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground opacity-60">
-                            <MessageSquare className="h-10 w-10 mb-3 stroke-1" />
-                            <p className="text-sm">Sin conversaciones.</p>
+                        )}
+                        
+                        <div ref={loadMoreRef} className="py-2 text-center text-xs text-muted-foreground h-8">
+                            {loadingMore && <span className="animate-pulse">Cargando...</span>}
                         </div>
-                    )}
-                    
-                    <div ref={loadMoreRef} className="py-2 text-center text-xs text-muted-foreground h-8">
-                        {loadingMore && <span className="animate-pulse">Cargando...</span>}
                     </div>
-                </div>
-            </ScrollArea>
-        </div>
+                </ScrollArea>
+            </TabsContent>
+            
+            {/* Loans List */}
+            <TabsContent value="loans" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
+                 <ScrollArea className="h-full custom-scrollbar">
+                    <div className="flex flex-col gap-1 p-3">
+                        {filteredLoanPlayers.map((player) => {
+                            const isOnline = onlineUsers.has(player.id)
+                            const presenceText = formatPresence(player.last_seen, isOnline)
+                            
+                            return (
+                                <button
+                                    key={player.id}
+                                    onClick={() => handleLoanPlayerClick(player)}
+                                    className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative hover:bg-muted/60 border border-transparent"
+                                >
+                                    <div className="relative shrink-0">
+                                        <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                                            <AvatarImage src={player.photo} className="object-cover" />
+                                            <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700 font-semibold text-muted-foreground">
+                                                {player.name.substring(0,2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        {isOnline && (
+                                            <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className="font-semibold truncate text-sm text-foreground">
+                                                {player.name}
+                                            </span>
+                                            <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                A Préstamo
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                                <User className="h-3 w-3 text-muted-foreground" />
+                                                <span className="text-xs text-muted-foreground truncate">
+                                                    {presenceText}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            )
+                        })}
+                        
+                         {filteredLoanPlayers.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground opacity-60">
+                                <User className="h-10 w-10 mb-3 stroke-1" />
+                                <p className="text-sm">No hay jugadores a préstamo.</p>
+                            </div>
+                        )}
+                    </div>
+                 </ScrollArea>
+            </TabsContent>
+        </Tabs>
       </div>
 
       {/* Main Chat Area */}

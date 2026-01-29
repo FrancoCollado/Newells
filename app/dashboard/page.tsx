@@ -44,6 +44,7 @@ import { IndicesManager } from "@/components/indices-manager"
 import { CaptacionManager } from "@/components/captacion-manager"
 import { LeagueTypeFilter } from "@/components/league-type-filter"
 import { ReadaptacionManager } from "@/components/readaptacion-manager"
+import { RehabilitacionManager } from "@/components/rehabilitacion-manager" // NUEVO IMPORT
 import { ProfessionalLayout } from "@/components/professional-layout"
 
 const Loading = () => null;
@@ -81,6 +82,7 @@ export default function DashboardPage() {
 
   const [showIndicesModal, setShowIndicesModal] = useState(false)
   const [showCaptacionModal, setShowCaptacionModal] = useState(false)
+  const [showRehabilitacionModal, setShowRehabilitacionModal] = useState(false) // NUEVO ESTADO
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
   const [editingTrainingData, setEditingTrainingData] = useState<any | null>(null)
 
@@ -394,6 +396,7 @@ export default function DashboardPage() {
       onLogout={handleLogout}
       onOpenCaptacion={() => setShowCaptacionModal(true)}
       onOpenReadaptacion={() => setShowReadaptacionModal(true)}
+      onOpenRehabilitacion={() => setShowRehabilitacionModal(true)} // CONEXIÓN NUEVA
     >
         {loading && (
           <div className="flex h-screen items-center justify-center">
@@ -879,6 +882,13 @@ export default function DashboardPage() {
         <ReadaptacionManager
           userName={user.name}
           onClose={() => setShowReadaptacionModal(false)}
+        />
+      )}
+      {/* 3. CONEXIÓN DEL MODAL DE REHABILITACIÓN */}
+      {showRehabilitacionModal && user && (
+        <RehabilitacionManager
+          userName={user.name}
+          onClose={() => setShowRehabilitacionModal(false)}
         />
       )}
     </ProfessionalLayout>

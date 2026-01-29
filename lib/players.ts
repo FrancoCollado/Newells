@@ -561,6 +561,7 @@ export async function createPlayer(
     attendance_percentage: 100,
     league_types: player.leagueTypes || ["ROSARINA"],
     loan_status: player.loanStatus || null,
+    is_on_loan: player.loanStatus === "PRESTAMO",
   }
 
   const newFields: any = {}
@@ -641,7 +642,6 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
   if (player.photo) basicUpdateData.photo = player.photo
   if (player.attendancePercentage !== undefined) basicUpdateData.attendance_percentage = player.attendancePercentage
   if (player.leagueTypes !== undefined) basicUpdateData.league_types = player.leagueTypes
-  if (player.loanStatus !== undefined) basicUpdateData.loan_status = player.loanStatus
 
   const newFields: any = {}
   if (player.isPensioned !== undefined) newFields.is_pensioned = player.isPensioned
@@ -683,6 +683,13 @@ export async function updatePlayer(id: string, player: Partial<Player>): Promise
     if (ext.isRegularStudent !== undefined) newFields.is_regular_student = ext.isRegularStudent
     if (ext.schoolSituation !== undefined) newFields.school_situation = ext.schoolSituation || null
     if (ext.schoolYear !== undefined) newFields.school_year = ext.schoolYear || null
+  }
+
+  // Handle loanStatus specifically - this overrides any extendedData setting because
+  // this comes from the main checkbox in the UI which is the primary control for this feature
+  if (player.loanStatus !== undefined) {
+    basicUpdateData.loan_status = player.loanStatus
+    basicUpdateData.is_on_loan = player.loanStatus === "PRESTAMO"
   }
 
   if (player.observations !== undefined) {
