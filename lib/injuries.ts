@@ -62,6 +62,11 @@ export type Injury = {
   rtpCriteriaStrength: boolean
   rtpCriteriaGps: boolean
 
+  surgeryDate?: string
+  rtrNotes?: string
+  rttNotes?: string
+  rtpNotes?: string
+
   // Observaciones
   medicalObservations?: string
   responsibleDoctor?: string
@@ -118,6 +123,10 @@ export type CreateInjuryParams = {
   rtpCriteriaFunctional?: boolean
   rtpCriteriaStrength?: boolean
   rtpCriteriaGps?: boolean
+  surgeryDate?: string
+  rtrNotes?: string
+  rttNotes?: string
+  rtpNotes?: string
   medicalObservations?: string
   responsibleDoctor?: string
 }
@@ -194,6 +203,10 @@ export async function createInjury(injury: CreateInjuryParams): Promise<Injury> 
     rtp_criteria_functional: injury.rtpCriteriaFunctional,
     rtp_criteria_strength: injury.rtpCriteriaStrength,
     rtp_criteria_gps: injury.rtpCriteriaGps,
+    surgery_date: injury.surgeryDate,
+    rtr_notes: injury.rtrNotes,
+    rtt_notes: injury.rtt_notes,
+    rtp_notes: injury.rtp_notes,
     medical_observations: injury.medicalObservations,
     responsible_doctor: injury.responsibleDoctor,
   }
@@ -241,6 +254,10 @@ export async function updateInjury(injuryId: string, injury: Partial<Injury>): P
   if (injury.rtpCriteriaFunctional !== undefined) dbInjury.rtp_criteria_functional = injury.rtpCriteriaFunctional
   if (injury.rtpCriteriaStrength !== undefined) dbInjury.rtp_criteria_strength = injury.rtpCriteriaStrength
   if (injury.rtpCriteriaGps !== undefined) dbInjury.rtp_criteria_gps = injury.rtpCriteriaGps
+  if (injury.surgeryDate !== undefined) dbInjury.surgery_date = injury.surgeryDate
+  if (injury.rtrNotes !== undefined) dbInjury.rtr_notes = injury.rtrNotes
+  if (injury.rttNotes !== undefined) dbInjury.rtt_notes = injury.rttNotes
+  if (injury.rtpNotes !== undefined) dbInjury.rtp_notes = injury.rtpNotes
   if (injury.medicalObservations !== undefined) dbInjury.medical_observations = injury.medicalObservations
   if (injury.responsibleDoctor !== undefined) dbInjury.responsible_doctor = injury.responsibleDoctor
   if (injury.isDischarged !== undefined) dbInjury.is_discharged = injury.isDischarged
@@ -333,7 +350,7 @@ export async function addInjuryEvolution(injuryId: string, evolutionText: string
   }
 }
 
-export async function getActiveInjuries(): Promise<Array<Injury & { playerName: string; playerDivision: string }>> {
+export async function getActiveInjuries(): Promise<Array<Injury & { playerName: string; playerDivision: string; playerPosition: string; dominantFoot: string }>> {
   const supabase = await createServerClient()
 
   const { data, error } = await supabase
@@ -343,7 +360,9 @@ export async function getActiveInjuries(): Promise<Array<Injury & { playerName: 
       players:player_id (
         name,
         division,
-        is_injured
+        position,
+        is_injured,
+        dominant_foot
       )
     `)
     .eq("is_discharged", false)
@@ -361,12 +380,14 @@ export async function getActiveInjuries(): Promise<Array<Injury & { playerName: 
       ...mapDatabaseInjuryToAppInjury(item),
       playerName: item.players?.name || "Desconocido",
       playerDivision: item.players?.division || "N/A",
+      playerPosition: item.players?.position || "N/A",
+      dominantFoot: item.players?.dominant_foot || "-",
     }))
 
   return activeInjuries
 }
 
-export async function getAllInjuries(): Promise<Array<Injury & { playerName: string; playerDivision: string }>> {
+export async function getAllInjuries(): Promise<Array<Injury & { playerName: string; playerDivision: string; playerPosition: string; dominantFoot: string }>> {
   const supabase = await createServerClient()
 
   const { data, error } = await supabase
@@ -376,7 +397,9 @@ export async function getAllInjuries(): Promise<Array<Injury & { playerName: str
       players:player_id (
         name,
         division,
-        is_injured
+        position,
+        is_injured,
+        dominant_foot
       )
     `)
     .order("injury_date", { ascending: false })
@@ -391,6 +414,8 @@ export async function getAllInjuries(): Promise<Array<Injury & { playerName: str
     ...mapDatabaseInjuryToAppInjury(item),
     playerName: item.players?.name || "Desconocido",
     playerDivision: item.players?.division || "N/A",
+    playerPosition: item.players?.position || "N/A",
+    dominantFoot: item.players?.dominant_foot || "-",
   }))
 
   return allInjuries
@@ -428,6 +453,10 @@ function mapDatabaseInjuryToAppInjury(dbInjury: any): Injury {
     rtpCriteriaFunctional: dbInjury.rtp_criteria_functional || false,
     rtpCriteriaStrength: dbInjury.rtp_criteria_strength || false,
     rtpCriteriaGps: dbInjury.rtp_criteria_gps || false,
+    surgeryDate: dbInjury.surgery_date,
+    rtrNotes: dbInjury.rtr_notes,
+    rttNotes: dbInjury.rtt_notes,
+    rtpNotes: dbInjury.rtp_notes,
     medicalObservations: dbInjury.medical_observations,
     responsibleDoctor: dbInjury.responsible_doctor,
     isDischarged: dbInjury.is_discharged || false,

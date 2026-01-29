@@ -78,6 +78,7 @@ export interface Player {
   technicalReport?: string
   goals: number
   attendancePercentage: number
+  dominantFoot?: string
   extendedData?: PlayerExtendedData
   observations?: string
   leagueTypes: LeagueType[] // Jugador puede estar en AFA, ROSARINA, o ambos
@@ -349,6 +350,7 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
     goals: dbPlayer.goals,
     photo: dbPlayer.photo,
     attendancePercentage: dbPlayer.attendance_percentage ?? 100,
+    dominantFoot: dbPlayer.dominant_foot,
     observations: dbPlayer.observations,
     leagueTypes: dbPlayer.league_types || ["ROSARINA"],
     loanStatus: dbPlayer.loan_status,

@@ -12,7 +12,7 @@ import {
   LogOut,
   ChevronUp,
   User2,
-  PlusSquare, // Importamos un icono para diferenciarlo de readaptación
+  FileText,
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 
@@ -46,7 +46,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onLogout: () => void
   onOpenCaptacion?: () => void
   onOpenReadaptacion?: () => void
-  onOpenRehabilitacion?: () => void // <--- AGREGADO
+  onOpenRehabilitacion?: () => void // NUEVA PROP
 }
 
 export function AppSidebar({ 
@@ -54,7 +54,7 @@ export function AppSidebar({
   onLogout, 
   onOpenCaptacion, 
   onOpenReadaptacion, 
-  onOpenRehabilitacion, // <--- AGREGADO
+  onOpenRehabilitacion, // DESTRUCTURADA
   ...props 
 }: AppSidebarProps) {
   const router = useRouter()
@@ -92,9 +92,8 @@ export function AppSidebar({
                   onClick={() => router.push("/dashboard")} 
                   isActive={pathname === "/dashboard"}
                   tooltip="Inicio"
-                  className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
                 >
-                  <LayoutDashboard className="text-muted-foreground group-data-[active=true]:text-red-700" />
+                  <LayoutDashboard className="text-muted-foreground" />
                   <span>Inicio</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -104,10 +103,20 @@ export function AppSidebar({
                   onClick={() => router.push("/dashboard/messages")}
                   isActive={pathname?.startsWith("/dashboard/messages")}
                   tooltip="Mensajes"
-                  className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
                 >
-                  <MessageSquare className="text-muted-foreground group-data-[active=true]:text-red-700" />
+                  <MessageSquare className="text-muted-foreground" />
                   <span>Mensajes</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={() => router.push("/areas")}
+                  isActive={pathname?.startsWith("/areas")}
+                  tooltip="Áreas"
+                >
+                  <FileText className="text-muted-foreground" />
+                  <span>Áreas</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -117,9 +126,8 @@ export function AppSidebar({
                     onClick={() => router.push("/manager")}
                     isActive={pathname?.startsWith("/manager")}
                     tooltip="Gestión"
-                    className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
                   >
-                    <Settings className="text-muted-foreground group-data-[active=true]:text-red-700" />
+                    <Settings className="text-muted-foreground" />
                     <span>Gestión</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -131,25 +139,12 @@ export function AppSidebar({
                     onClick={() => router.push("/injured-players")}
                     isActive={pathname?.startsWith("/injured-players")}
                     tooltip="Lesiones"
-                    className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
                   >
-                    <Stethoscope className="text-muted-foreground group-data-[active=true]:text-red-700" />
+                    <Stethoscope className="text-muted-foreground" />
                     <span>Lesiones</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-
-              <SidebarMenuItem>
-                 <SidebarMenuButton 
-                    onClick={() => router.push("/areas")}
-                    isActive={pathname?.startsWith("/areas")}
-                    tooltip="Áreas"
-                    className="data-[active=true]:bg-red-50 data-[active=true]:text-red-700 data-[active=true]:font-medium transition-all"
-                  >
-                    <Activity className="text-muted-foreground group-data-[active=true]:text-red-700" />
-                    <span>Áreas</span>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -176,7 +171,7 @@ export function AppSidebar({
                   </SidebarMenuButton>
                </SidebarMenuItem>
 
-               {/* NUEVO BOTÓN DE REHABILITACIÓN */}
+               {/* BOTÓN DE REHABILITACIÓN (NUEVO) */}
                <SidebarMenuItem>
                   <SidebarMenuButton onClick={onOpenRehabilitacion} tooltip="Rehabilitación">
                     <HeartPulse className="text-muted-foreground" />
