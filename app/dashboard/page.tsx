@@ -882,6 +882,7 @@ export default function DashboardPage() {
         <ReadaptacionManager
           userName={user.name}
           onClose={() => setShowReadaptacionModal(false)}
+          canEdit={user.role === "entrenador" || user.role === "dirigente"}
         />
       )}
       {/* 3. CONEXIÓN DEL MODAL DE REHABILITACIÓN */}
@@ -889,6 +890,7 @@ export default function DashboardPage() {
         <RehabilitacionManager
           userName={user.name}
           onClose={() => setShowRehabilitacionModal(false)}
+          canEdit={user.role === "kinesiologo" || user.role === "dirigente"}
         />
       )}
     </ProfessionalLayout>

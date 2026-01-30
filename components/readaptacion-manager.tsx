@@ -36,9 +36,10 @@ import { AreaReport } from "@/lib/areas"
 interface ReadaptacionManagerProps {
   userName: string
   onClose: () => void
+  canEdit?: boolean
 }
 
-export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerProps) {
+export function ReadaptacionManager({ userName, onClose, canEdit = false }: ReadaptacionManagerProps) {
   const { toast } = useToast()
   
   // Estados de datos
@@ -159,9 +160,11 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
                 Gestión de informes de recuperación - Usuario: {userName}
               </DialogDescription>
             </div>
-            <Button onClick={() => setShowForm(true)} className="bg-red-700 hover:bg-red-800">
-              <Plus className="h-4 w-4 mr-2" /> Nuevo Informe
-            </Button>
+            {canEdit && (
+              <Button onClick={() => setShowForm(true)} className="bg-red-700 hover:bg-red-800">
+                <Plus className="h-4 w-4 mr-2" /> Nuevo Informe
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -186,14 +189,16 @@ export function ReadaptacionManager({ userName, onClose }: ReadaptacionManagerPr
                         {new Date(report.date).toLocaleDateString("es-AR")} • Por: {report.createdBy}
                       </p>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(report)} className="text-blue-600">
-                        ✏��
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(report.id)} className="text-gray-400 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {canEdit && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(report)} className="text-blue-600">
+                          ✏️
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(report.id)} className="text-gray-400 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="py-3 px-4 border-t">
                     <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">{report.content}</p>

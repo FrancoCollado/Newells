@@ -35,7 +35,7 @@ interface LesionData {
   rtp: string
 }
 
-export function RehabilitacionManager({ userName, onClose }: { userName: string, onClose: () => void }) {
+export function RehabilitacionManager({ userName, onClose, canEdit = false }: { userName: string, onClose: () => void, canEdit?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<LesionData[]>([])
@@ -116,10 +116,12 @@ export function RehabilitacionManager({ userName, onClose }: { userName: string,
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Guardar Cambios
-          </Button>
+          {canEdit && (
+            <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" disabled={saving}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Guardar Cambios
+            </Button>
+          )}
         </div>
 
         <CardContent className="flex-1 overflow-auto p-0">
@@ -165,6 +167,7 @@ export function RehabilitacionManager({ userName, onClose }: { userName: string,
                           value={item.rtr} 
                           onChange={(e) => handleUpdateField(item.id, 'rtr', e.target.value)}
                           className="h-8 text-xs border-red-200 focus:ring-red-500"
+                          readOnly={!canEdit}
                         />
                       </TableCell>
                       <TableCell className="bg-red-50/30">
@@ -172,6 +175,7 @@ export function RehabilitacionManager({ userName, onClose }: { userName: string,
                           value={item.rtt} 
                           onChange={(e) => handleUpdateField(item.id, 'rtt', e.target.value)}
                           className="h-8 text-xs border-red-200 focus:ring-red-500"
+                          readOnly={!canEdit}
                         />
                       </TableCell>
                       <TableCell className="bg-red-50/30">
@@ -179,6 +183,7 @@ export function RehabilitacionManager({ userName, onClose }: { userName: string,
                           value={item.rtp} 
                           onChange={(e) => handleUpdateField(item.id, 'rtp', e.target.value)}
                           className="h-8 text-xs border-red-200 focus:ring-red-500"
+                          readOnly={!canEdit}
                         />
                       </TableCell>
                     </TableRow>
