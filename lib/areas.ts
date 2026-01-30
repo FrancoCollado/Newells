@@ -5,7 +5,7 @@ export interface AreaReport {
   area: string
   date: string
   title: string
-  content: string
+  content?: string
   createdBy: string
   hyperlink?: string
   attachments: Array<{
@@ -86,7 +86,7 @@ export async function saveAreaReport(report: {
   id?: string
   area: string
   title: string
-  content: string
+  content?: string
   createdBy?: string
   hyperlink?: string
   attachments?: Array<{

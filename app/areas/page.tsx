@@ -123,7 +123,7 @@ export default function AreasPage() {
   }
 
   const handleSaveReport = async () => {
-    if (!newReportTitle.trim() || !newReportContent.trim() || !user) return
+    if (!newReportTitle.trim() || !user) return
     if (!canEditArea(user.role, selectedArea)) return
 
     setActionLoading(true)
@@ -582,7 +582,7 @@ export default function AreasPage() {
                                     onClick={() => {
                                       setEditingReport(report)
                                       setNewReportTitle(report.title)
-                                      setNewReportContent(report.content)
+                                      setNewReportContent(report.content || "")
                                       setNewReportHyperlink(report.hyperlink || "")
                                       setNewReportAttachments(report.attachments || [])
                                       setShowNewReportForm(true)
