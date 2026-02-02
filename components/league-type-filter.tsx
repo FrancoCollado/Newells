@@ -4,8 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { LeagueType } from "@/lib/players"
 
 interface LeagueTypeFilterProps {
-  value: LeagueType | "PRESTAMO" | "todas"
-  onChange: (value: LeagueType | "PRESTAMO" | "todas") => void
+  value: LeagueType | "PRESTAMO" | "LIBRE" | "todas"
+  onChange: (value: LeagueType | "PRESTAMO" | "LIBRE" | "todas") => void
 }
 
 export function LeagueTypeFilter({ value, onChange }: LeagueTypeFilterProps) {
@@ -19,6 +19,7 @@ export function LeagueTypeFilter({ value, onChange }: LeagueTypeFilterProps) {
         <SelectItem value="AFA">AFA</SelectItem>
         <SelectItem value="ROSARINA">Rosarina</SelectItem>
         <SelectItem value="PRESTAMO">Préstamo</SelectItem>
+        <SelectItem value="LIBRE">Libre</SelectItem>
       </SelectContent>
     </Select>
   )

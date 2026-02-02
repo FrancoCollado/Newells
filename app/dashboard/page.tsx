@@ -33,6 +33,7 @@ import {
   Upload,
   MessageSquare,
   HeartPulse,
+  UserX,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [selectedDivision, setSelectedDivision] = useState<Division | "all">("all")
   const [selectedLeagueType, setSelectedLeagueType] = useState<LeagueType | "all">("all")
   const [totalPlayers, setTotalPlayers] = useState(0)
+  const [freePlayersCount, setFreePlayersCount] = useState(0)
   const [showTrainingModal, setShowTrainingModal] = useState(false)
   const [trainingDescription, setTrainingDescription] = useState("")
   const [trainingLink, setTrainingLink] = useState("")
@@ -125,7 +127,11 @@ export default function DashboardPage() {
         setUser(currentUser)
       }
 
-      setTotalPlayers(allPlayers.length)
+      const activePlayers = allPlayers.filter(p => !p.division.includes("libre"))
+      const freePlayers = allPlayers.filter(p => p.division.includes("libre"))
+      
+      setTotalPlayers(activePlayers.length)
+      setFreePlayersCount(freePlayers.length)
       setLoading(false)
     }
     init()
@@ -418,7 +424,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Jugadores</CardTitle>
@@ -426,7 +432,18 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalPlayers}</div>
-                  <p className="text-xs text-muted-foreground">En todas las divisiones</p>
+                  <p className="text-xs text-muted-foreground">Activos en divisiones</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Jugadores Libres</CardTitle>
+                  <UserX className="h-4 w-4 text-orange-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{freePlayersCount}</div>
+                  <p className="text-xs text-muted-foreground">Sin división asignada</p>
                 </CardContent>
               </Card>
 

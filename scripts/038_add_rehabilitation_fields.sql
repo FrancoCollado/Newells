@@ -17,3 +17,4 @@ COMMENT ON COLUMN injuries.surgery_date IS 'Fecha de la cirugía si aplica';
 COMMENT ON COLUMN injuries.rtr_notes IS 'Notas de kinesiología para Return to Run';
 COMMENT ON COLUMN injuries.rtt_notes IS 'Notas de kinesiología para Return to Training';
 COMMENT ON COLUMN injuries.rtp_notes IS 'Notas de kinesiología para Return to Play';
+

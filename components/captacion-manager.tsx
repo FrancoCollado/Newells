@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Search, PlusCircle, Trash2, Loader2, ChevronLeft, 
-  Camera, X, UserSearch, FileText, Plus, Pencil
+  Camera, X, UserSearch, FileText, Plus, Pencil, Download
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { 
   getCaptacionInformes, createCaptacionInforme, searchJugadorGlobal,
-  deleteCaptacionInforme, updateCaptacionInforme,
+  deleteCaptacionInforme, updateCaptacionInforme, downloadInformePDF,
   type CaptacionInforme, type JugadorRow 
 } from "@/lib/captacion"
 import { DialogDescription } from "@/components/ui/dialog"
@@ -319,9 +319,18 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
                   {viewingInforme.seccion} — {new Date(viewingInforme.created_at).toLocaleDateString()} — {viewingInforme.subido_por}
                 </p>
               </div>
-              <Button variant="ghost" className="text-white hover:bg-red-700" onClick={() => setViewingInforme(null)}>
-                <X className="h-6 w-6" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  className="bg-white text-red-800 hover:bg-slate-100 border-none font-bold"
+                  onClick={() => downloadInformePDF(viewingInforme)}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                </Button>
+                <Button variant="ghost" className="text-white hover:bg-red-700" onClick={() => setViewingInforme(null)}>
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
             </div>
 
             {/* CONTENIDO DEL INFORME */}

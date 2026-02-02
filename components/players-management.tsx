@@ -9,6 +9,7 @@ import {
   deletePlayer,
   getDivisionLabel,
   getPlayersByDivision,
+  setPlayerFree,
   type Player,
   type Division,
   type Position,
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Search, Loader2, FileText, Home, Printer } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, Loader2, FileText, Home, Printer, UserX } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -43,6 +44,7 @@ export function PlayersManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isFreePlayerDialogOpen, setIsFreePlayerDialogOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -58,7 +60,7 @@ export function PlayersManagement() {
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    division: "reserva" as Division,
+    division: ["reserva"] as Division[],
     age: "",
     position: "Defensor" as Position,
     height: "",
@@ -125,7 +127,7 @@ export function PlayersManagement() {
   const resetForm = () => {
     setFormData({
       name: "",
-      division: "reserva",
+      division: ["reserva"],
       age: "",
       position: "Defensor",
       height: "",
@@ -267,11 +269,36 @@ export function PlayersManagement() {
     setActionLoading(false)
   }
 
+  const handleSetFree = async () => {
+    if (!selectedPlayer) return
+
+    setActionLoading(true)
+    const success = await setPlayerFree(selectedPlayer.id)
+
+    if (success) {
+      setIsFreePlayerDialogOpen(false)
+      setSelectedPlayer(null)
+      loadPlayers()
+
+      toast({
+        title: "Jugador liberado",
+        description: `${selectedPlayer.name} ha quedado en condición de libre`,
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del jugador",
+        variant: "destructive",
+      })
+    }
+    setActionLoading(false)
+  }
+
   const openEditDialog = (player: Player) => {
     setSelectedPlayer(player)
     setFormData({
       name: player.name,
-      division: player.division,
+      division: Array.isArray(player.division) ? player.division : [player.division],
       age: player.age.toString(),
       position: player.position,
       height: player.height.toString(),
@@ -294,6 +321,15 @@ export function PlayersManagement() {
         ? prev.leagueTypes.filter((lt) => lt !== leagueType)
         : [...prev.leagueTypes, leagueType]
       return { ...prev, leagueTypes: newLeagueTypes }
+    })
+  }
+
+  const toggleDivision = (div: Division) => {
+    setFormData((prev) => {
+      const newDivisions = prev.division.includes(div)
+        ? prev.division.filter((d) => d !== div)
+        : [...prev.division, div]
+      return { ...prev, division: newDivisions }
     })
   }
 
@@ -427,6 +463,7 @@ export function PlayersManagement() {
               <SelectItem value="12">12va División</SelectItem>
               <SelectItem value="13">13va División</SelectItem>
               <SelectItem value="arqueros">Arqueros</SelectItem>
+              <SelectItem value="libre">Libre</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -488,7 +525,13 @@ export function PlayersManagement() {
                   <TableRow key={player.id}>
                     <TableCell className="font-medium">{player.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{getDivisionLabel(player.division)}</Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {player.division.map((div) => (
+                          <Badge key={div} variant="outline" className="text-[10px]">
+                            {getDivisionLabel(div)}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Select
@@ -538,6 +581,20 @@ export function PlayersManagement() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {!player.division.includes("libre") && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              setSelectedPlayer(player)
+                              setIsFreePlayerDialogOpen(true)
+                            }}
+                            title="Dejar Libre"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(player)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -588,34 +645,25 @@ export function PlayersManagement() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-division">División *</Label>
-                <Select
-                  value={formData.division}
-                  onValueChange={(value: Division) => setFormData({ ...formData, division: value })}
-                >
-                  <SelectTrigger id="add-division">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4ta">4ta División</SelectItem>
-                    <SelectItem value="1eralocal">1era Local</SelectItem>
-                    <SelectItem value="reserva">Reserva</SelectItem>
-                    <SelectItem value="5ta">5ta División</SelectItem>
-                    <SelectItem value="6ta">6ta División</SelectItem>
-                    <SelectItem value="7ma">7ma División</SelectItem>
-                    <SelectItem value="8va">8va División</SelectItem>
-                    <SelectItem value="9na">9na División</SelectItem>
-                    <SelectItem value="10ma">10ma División</SelectItem>
-                    <SelectItem value="11">11va División</SelectItem>
-                    <SelectItem value="12">12va División</SelectItem>
-                    <SelectItem value="13">13va División</SelectItem>
-                    <SelectItem value="arqueros">Arqueros</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <Label className="text-base font-semibold">Divisiones *</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {(["4ta", "1eralocal", "reserva", "5ta", "6ta", "7ma", "8va", "9na", "10ma", "11", "12", "13", "arqueros", "libre"] as Division[]).map((div) => (
+                  <div key={div} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`add-div-${div}`}
+                      checked={formData.division.includes(div)}
+                      onCheckedChange={() => toggleDivision(div)}
+                    />
+                    <Label htmlFor={`add-div-${div}`} className="font-normal cursor-pointer text-xs">
+                      {getDivisionLabel(div)}
+                    </Label>
+                  </div>
+                ))}
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="add-position">Posición *</Label>
                 <Select
@@ -748,34 +796,25 @@ export function PlayersManagement() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-division">División *</Label>
-                <Select
-                  value={formData.division}
-                  onValueChange={(value: Division) => setFormData({ ...formData, division: value })}
-                >
-                  <SelectTrigger id="edit-division">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4ta">4ta División</SelectItem>
-                    <SelectItem value="1eralocal">1era Local</SelectItem>
-                    <SelectItem value="reserva">Reserva</SelectItem>
-                    <SelectItem value="5ta">5ta División</SelectItem>
-                    <SelectItem value="6ta">6ta División</SelectItem>
-                    <SelectItem value="7ma">7ma División</SelectItem>
-                    <SelectItem value="8va">8va División</SelectItem>
-                    <SelectItem value="9na">9na División</SelectItem>
-                    <SelectItem value="10ma">10ma División</SelectItem>
-                    <SelectItem value="11">11va División</SelectItem>
-                    <SelectItem value="12">12va División</SelectItem>
-                    <SelectItem value="13">13va División</SelectItem>
-                    <SelectItem value="arqueros">Arqueros</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <Label className="text-base font-semibold">Divisiones *</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {(["4ta", "1eralocal", "reserva", "5ta", "6ta", "7ma", "8va", "9na", "10ma", "11", "12", "13", "arqueros", "libre"] as Division[]).map((div) => (
+                  <div key={div} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`edit-div-${div}`}
+                      checked={formData.division.includes(div)}
+                      onCheckedChange={() => toggleDivision(div)}
+                    />
+                    <Label htmlFor={`edit-div-${div}`} className="font-normal cursor-pointer text-xs">
+                      {getDivisionLabel(div)}
+                    </Label>
+                  </div>
+                ))}
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-position">Posición *</Label>
                 <Select
@@ -906,6 +945,28 @@ export function PlayersManagement() {
             <Button variant="destructive" onClick={handleDelete} disabled={actionLoading}>
               {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Libre Dialog */}
+      <Dialog open={isFreePlayerDialogOpen} onOpenChange={setIsFreePlayerDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dejar Libre al Jugador</DialogTitle>
+            <DialogDescription>
+              ¿Estas seguro de dejar libre al jugador {selectedPlayer?.name}? 
+              Esto lo quitará de su división actual y lo marcará como jugador libre.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFreePlayerDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSetFree} className="bg-orange-600 hover:bg-orange-700 text-white" disabled={actionLoading}>
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Dejar Libre
             </Button>
           </DialogFooter>
         </DialogContent>

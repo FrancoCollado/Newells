@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 interface PlayersListProps {
   division?: Division
   userRole: UserRole
-  leagueType?: LeagueType | "PRESTAMO" | "all"
+  leagueType?: LeagueType | "PRESTAMO" | "LIBRE" | "all"
 }
 
 export function PlayersList({ division, userRole, leagueType }: PlayersListProps) {
@@ -249,7 +249,11 @@ export function PlayersList({ division, userRole, leagueType }: PlayersListProps
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg truncate">{player.name}</h3>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="outline">{getDivisionLabel(player.division)}</Badge>
+                      {player.division.map((div) => (
+                        <Badge key={div} variant="outline">
+                          {getDivisionLabel(div)}
+                        </Badge>
+                      ))}
                       <Badge variant="secondary">{player.position}</Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-3 text-sm">

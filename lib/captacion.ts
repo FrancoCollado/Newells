@@ -1,4 +1,6 @@
 import { supabase } from "./supabase"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 export interface JugadorRow {
   apellido_nombre: string
@@ -85,4 +87,50 @@ export async function searchJugadorGlobal(nombre: string): Promise<CaptacionInfo
   return (data as CaptacionInforme[]).filter(inf => 
     inf.contenido.some(j => j.apellido_nombre.toLowerCase().includes(nombre.toLowerCase()))
   );
+}
+
+export function downloadInformePDF(informe: CaptacionInforme) {
+  const doc = new jsPDF({ orientation: "landscape" })
+  
+  // Título
+  doc.setFontSize(18)
+  doc.setTextColor(153, 27, 27) // Red 800
+  doc.text(informe.titulo.toUpperCase(), 14, 20)
+  
+  // Metadata
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  const dateStr = new Date(informe.created_at).toLocaleDateString()
+  doc.text(`${informe.seccion} | Fecha: ${dateStr} | Subido por: ${informe.subido_por}`, 14, 28)
+  
+  // Tabla
+  const tableColumn = ["Nombre", "Cat.", "Pos.", "Club", "Tel.", "Contacto", "Cap.", "Pens.", "Características", "Pts", "Citar"]
+  const tableRows = informe.contenido.map(row => [
+    row.apellido_nombre,
+    row.categoria,
+    row.posicion,
+    row.club,
+    row.telefono,
+    row.contacto,
+    row.captador,
+    row.pension,
+    row.caracteristicas,
+    row.puntaje,
+    row.volver_a_citar
+  ])
+
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 35,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [31, 41, 55], textColor: [255, 255, 255], fontStyle: 'bold' }, // Slate 800
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 40 },
+      8: { cellWidth: 80 } // Características wider
+    }
+  })
+
+  doc.save(`${informe.titulo.replace(/\s+/g, '_')}.pdf`)
 }

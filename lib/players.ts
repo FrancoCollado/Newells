@@ -14,6 +14,7 @@ export type Division =
   | "12"
   | "13"
   | "arqueros"
+  | "libre"
 
 export type Position = "Arquero" | "Defensor" | "Mediocampista" | "Delantero"
 
@@ -66,7 +67,7 @@ export interface PlayerExtendedData {
 export interface Player {
   id: string
   name: string
-  division: Division
+  division: Division[]
   age: number
   position: Position
   height: number
@@ -92,7 +93,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "1",
     name: "Lucas Martínez",
-    division: "4ta",
+    division: ["4ta"],
     age: 19,
     position: "Defensor",
     height: 182,
@@ -109,7 +110,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "2",
     name: "Franco Gómez",
-    division: "4ta",
+    division: ["4ta"],
     age: 20,
     position: "Delantero",
     height: 177,
@@ -128,7 +129,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "5",
     name: "Julián Fernández",
-    division: "reserva",
+    division: ["reserva"],
     age: 18,
     position: "Defensor",
     height: 182,
@@ -145,7 +146,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "6",
     name: "Matías González",
-    division: "reserva",
+    division: ["reserva"],
     age: 19,
     position: "Mediocampista",
     height: 176,
@@ -164,7 +165,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "7",
     name: "Santiago López",
-    division: "5ta",
+    division: ["5ta"],
     age: 17,
     position: "Delantero",
     height: 177,
@@ -181,7 +182,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "8",
     name: "Tomás Pérez",
-    division: "5ta",
+    division: ["5ta"],
     age: 17,
     position: "Mediocampista",
     height: 174,
@@ -200,7 +201,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "9",
     name: "Nicolás Romero",
-    division: "7ma",
+    division: ["7ma"],
     age: 15,
     position: "Defensor",
     height: 179,
@@ -217,7 +218,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "10",
     name: "Agustín Silva",
-    division: "7ma",
+    division: ["7ma"],
     age: 15,
     position: "Mediocampista",
     height: 174,
@@ -236,7 +237,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "11",
     name: "Valentín Castro",
-    division: "9na",
+    division: ["9na"],
     age: 13,
     position: "Defensor",
     height: 175,
@@ -253,7 +254,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "12",
     name: "Lautaro Ruiz",
-    division: "9na",
+    division: ["9na"],
     age: 13,
     position: "Delantero",
     height: 172,
@@ -272,7 +273,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "13",
     name: "Benjamín Morales",
-    division: "arqueros",
+    division: ["arqueros"],
     age: 16,
     position: "Arquero",
     height: 184,
@@ -289,7 +290,7 @@ export const MOCK_PLAYERS: Player[] = [
   {
     id: "14",
     name: "Felipe Gutiérrez",
-    division: "arqueros",
+    division: ["arqueros"],
     age: 17,
     position: "Arquero",
     height: 186,
@@ -320,6 +321,7 @@ export function getDivisionLabel(division: Division): string {
     "12": "12va División",
     "13": "13va División",
     arqueros: "Arqueros",
+    libre: "Libre",
   }
   return labels[division]
 }
@@ -338,7 +340,7 @@ function mapDatabasePlayerToAppPlayer(dbPlayer: any): Player {
   return {
     id: dbPlayer.id,
     name: dbPlayer.name,
-    division: dbPlayer.division,
+    division: Array.isArray(dbPlayer.division) ? dbPlayer.division : (dbPlayer.division ? [dbPlayer.division] : []),
     age: dbPlayer.age,
     position: dbPlayer.position,
     height: dbPlayer.height,
@@ -443,7 +445,7 @@ export async function getPlayersByDivision(
   page = 0,
   limit = 20,
   searchTerm?: string,
-  leagueTypeFilter?: LeagueType | "PRESTAMO" | "todas",
+  leagueTypeFilter?: LeagueType | "PRESTAMO" | "LIBRE" | "todas",
 ): Promise<Player[]> {
   console.log("[v0] Filtering players:", { division, page, limit, searchTerm, leagueTypeFilter })
 
@@ -459,7 +461,7 @@ export async function getPlayersByDivision(
     .range(from, to)
 
   if (division && division !== "todas") {
-    query = query.eq("division", division)
+    query = query.contains("division", [division])
   }
 
   if (searchTerm) {
@@ -469,6 +471,8 @@ export async function getPlayersByDivision(
   if (leagueTypeFilter && leagueTypeFilter !== "todas") {
     if (leagueTypeFilter === "PRESTAMO") {
       query = query.eq("loan_status", "PRESTAMO")
+    } else if (leagueTypeFilter === "LIBRE") {
+      query = query.contains("division", ["libre"])
     } else {
       // Usar el operador @> (contains) de PostgreSQL para arrays JSONB
       query = query.overlaps("league_types", [leagueTypeFilter])
@@ -855,4 +859,20 @@ export async function updatePlayerPensionedStatus(playerId: string, isPensioned:
   }
 
   console.log(`[v0] Player ${playerId} pensioned status updated to: ${isPensioned}`)
+}
+
+export async function setPlayerFree(playerId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("players")
+    .update({ 
+      division: ["libre"],
+      is_free_player: true
+    })
+    .eq("id", playerId)
+
+  if (error) {
+    console.error("Error setting player free:", error)
+    return false
+  }
+  return true
 }
