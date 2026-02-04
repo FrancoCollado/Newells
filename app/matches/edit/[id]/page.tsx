@@ -4,29 +4,48 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { getCurrentUser, logout, type User } from "@/lib/auth"
 import { getDivisionLabel, type Division } from "@/lib/players"
+import { getMatchById, type Match } from "@/lib/matches"
 import { Loader2 } from "lucide-react"
 import { ProfessionalLayout } from "@/components/professional-layout"
 import { MatchForm } from "@/components/match-form"
+import { useToast } from "@/hooks/use-toast"
 
-export default function AddMatchPage() {
+export default function EditMatchPage() {
   const router = useRouter()
   const params = useParams()
+  const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
+  const [match, setMatch] = useState<Match | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const division = params.division as Division
+  const matchId = params.id as string
 
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      const currentUser = await getCurrentUser()
+      const [currentUser, matchData] = await Promise.all([
+        getCurrentUser(),
+        getMatchById(matchId)
+      ])
+      
       if (currentUser) {
         setUser(currentUser)
+      }
+
+      if (matchData) {
+        setMatch(matchData)
+      } else {
+        toast({
+          title: "Error",
+          description: "No se encontró el partido",
+          variant: "destructive",
+        })
+        router.push("/dashboard")
       }
       setLoading(false)
     }
     init()
-  }, [])
+  }, [matchId, router, toast])
 
   const handleLogout = async () => {
     await logout()
@@ -41,18 +60,23 @@ export default function AddMatchPage() {
     )
   }
 
-  if (!user || (user.role !== "dirigente" && user.role !== "entrenador")) {
+  if (!user || !match || (user.role !== "dirigente" && user.role !== "entrenador")) {
+    // Optionally redirect or show unauthorized
     return null
   }
 
   return (
     <ProfessionalLayout user={user} onLogout={handleLogout}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Cargar Partido - {getDivisionLabel(division)}</h1>
+        <h1 className="text-2xl font-bold">Editar Partido - {getDivisionLabel(match.division)}</h1>
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <MatchForm division={division} user={user} />
+        <MatchForm 
+          division={match.division} 
+          initialMatch={match} 
+          user={user}
+        />
       </div>
     </ProfessionalLayout>
   )

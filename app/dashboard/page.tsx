@@ -583,7 +583,19 @@ export default function DashboardPage() {
                                   </div>
                                   <p className="text-base font-semibold">vs {match.opponent}</p>
                                 </div>
-                                <span className="text-xs text-muted-foreground">Por: {match.createdBy}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Por: {match.createdBy}</span>
+                                  {user && user.name === match.createdBy && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => router.push(`/matches/edit/${match.id}`)}
+                                      className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50"
+                                    >
+                                      ✏️
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                                 <Users className="h-4 w-4" />
@@ -600,6 +612,23 @@ export default function DashboardPage() {
                                     <Video className="h-4 w-4" />
                                     Ver video del partido
                                   </a>
+                                </div>
+                              )}
+                              {match.attachments && match.attachments.length > 0 && (
+                                <div className="mt-3 pt-3 border-t">
+                                  <p className="text-xs font-medium text-gray-700 mb-2">Archivos adjuntos:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {match.attachments.map((attachment) => (
+                                      <button
+                                        key={attachment.id}
+                                        onClick={() => handleDownloadAttachment(attachment)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300 transition-colors cursor-pointer"
+                                      >
+                                        <span>📎</span>
+                                        <span className="max-w-[150px] truncate">{attachment.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
