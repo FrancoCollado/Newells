@@ -122,7 +122,7 @@ export function FormationsManager() {
 
         const allPlayers = await getPlayers()
         // Filtrar por 1era local o reserva para el equipo principal, o mostrar todos
-        const teamPlayers = allPlayers.filter((p) => p.division === "1eralocal" || p.division === "reserva")
+        const teamPlayers = allPlayers.filter((p) => p.division.includes("1eralocal") || p.division.includes("reserva"))
         setPlayers(teamPlayers.length > 0 ? teamPlayers : allPlayers)
 
         const formations = await getFormations()

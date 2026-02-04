@@ -57,7 +57,7 @@ export default function AddMatchPage() {
 
       const allPlayers = await getPlayers()
       const divisionPlayers = allPlayers.filter(
-        (p) => p.division === division && (p.leagueTypes?.includes(leagueType) || p.leagueTypes?.length === 0),
+        (p) => p.division.includes(division) && (p.leagueTypes?.includes(leagueType) || p.leagueTypes?.length === 0),
       )
       setPlayers(divisionPlayers)
       setLoading(false)

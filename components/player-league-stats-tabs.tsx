@@ -50,7 +50,7 @@ export function PlayerLeagueStatsTabs({
     goals: 0,
   }
 
-  const isGoalkeeper = player.division === "arqueros"
+  const isGoalkeeper = player.division.includes("arqueros")
 
   const StatsGrid = ({ stats }: { stats: typeof afaStats }) => (
     <div className="grid grid-cols-3 gap-4">

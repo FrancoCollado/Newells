@@ -210,7 +210,9 @@ export function CreateAnnouncementDialog({ open, onOpenChange, onSuccess }: Crea
                                 <AvatarFallback>{p.name[0]}</AvatarFallback>
                             </Avatar>
                             <span className="text-sm truncate">{p.name}</span>
-                            <Badge variant="secondary" className="ml-auto text-[10px]">{p.division}</Badge>
+                            <Badge variant="secondary" className="ml-auto text-[10px]">
+                              {Array.isArray(p.division) ? p.division.join(", ") : p.division}
+                            </Badge>
                             </div>
                         ))}
                         </div>
