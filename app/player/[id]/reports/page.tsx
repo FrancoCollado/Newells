@@ -180,7 +180,12 @@ export default function PlayerReportsPage() {
                     ) : (
                       <>
                         {reports.map((report) => (
-                          <ReportCard key={report.id} report={report} showDownload={true} />
+                          <ReportCard 
+                            key={report.id} 
+                            report={report} 
+                            showDownload={true} 
+                            currentUser={user}
+                          />
                         ))}
                         {hasMore && (
                           <div className="text-center pt-4">
@@ -206,7 +211,12 @@ export default function PlayerReportsPage() {
                   ) : (
                     <>
                       {reports.map((report) => (
-                        <ReportCard key={report.id} report={report} showDownload={true} />
+                        <ReportCard 
+                          key={report.id} 
+                          report={report} 
+                          showDownload={true} 
+                          currentUser={user}
+                        />
                       ))}
                       {hasMore && (
                         <div className="text-center pt-4">

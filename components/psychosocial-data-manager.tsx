@@ -16,6 +16,7 @@ import {
   getEvolutionsAction,
   saveEvolutionAction,
   deleteEvolutionAction,
+  updateEvolutionAction,
 } from "@/app/player/[id]/psychosocial-data/actions"
 
 interface PsychosocialDataManagerProps {
@@ -34,6 +35,8 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<PsychosocialCategory>("trayectoria_educativa")
   const [showUploadForm, setShowUploadForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [editingEvolution, setEditingEvolution] = useState<PsychosocialEvolution | null>(null)
   const [observations, setObservations] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [evolutions, setEvolutions] = useState<PsychosocialEvolution[]>([])
@@ -48,11 +51,6 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
     setLoading(true)
     console.log("[v0] Cargando evoluciones para categoría:", activeTab)
     const data = await getEvolutionsAction(playerId, activeTab)
-    console.log("[v0] Evoluciones cargadas:", data)
-    console.log("[v0] Total de evoluciones:", data?.length)
-    data?.forEach((evo, idx) => {
-      console.log(`[v0] Evolución ${idx} - file_url:`, evo.file_url)
-    })
     setEvolutions(data)
     setLoading(false)
   }
@@ -70,12 +68,7 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
     setUploading(true)
 
     try {
-      console.log("[v0] Guardando evolución - observaciones:", observations.length, "archivo:", selectedFile?.name)
       const result = await saveEvolutionAction(playerId, activeTab, observations, selectedFile)
-      console.log("[v0] Resultado de guardado COMPLETO:", JSON.stringify(result, null, 2))
-      console.log("[v0] result.success:", result?.success)
-      console.log("[v0] result.error:", result?.error)
-      console.log("[v0] result.id:", result?.id)
 
       if (result?.success) {
         toast({
@@ -98,6 +91,58 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
       toast({
         title: "Error",
         description: "Ocurrió un error al guardar la evolución",
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleEdit = (evolution: PsychosocialEvolution) => {
+    setEditingEvolution(evolution)
+    setObservations(evolution.observations || "")
+    setSelectedFile(null)
+    setShowEditForm(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!editingEvolution) return
+    if (!observations.trim() && !selectedFile && !editingEvolution.file_url) {
+      toast({
+        title: "Error",
+        description: "La evolución no puede quedar vacía",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUploading(true)
+
+    try {
+      const result = await updateEvolutionAction(editingEvolution.id, observations, selectedFile)
+
+      if (result?.success) {
+        toast({
+          title: "Éxito",
+          description: "La evolución se actualizó correctamente",
+        })
+        setObservations("")
+        setSelectedFile(null)
+        setEditingEvolution(null)
+        setShowEditForm(false)
+        loadEvolutions()
+      } else {
+        toast({
+          title: "Error",
+          description: result?.error || "No se pudo actualizar la evolución",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error en handleUpdate:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al actualizar la evolución",
         variant: "destructive",
       })
     } finally {
@@ -136,7 +181,6 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
         return
       }
 
-      // Detectar blob URLs antiguas
       if (evolution.file_url.startsWith("blob:")) {
         toast({
           title: "Archivo Expirado",
@@ -146,20 +190,6 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
         return
       }
 
-      // URLs públicas de Vercel Blob
-      if (evolution.file_url.startsWith("https://")) {
-        const link = document.createElement("a")
-        link.href = evolution.file_url
-        link.download = evolution.file_name || "archivo"
-        link.target = "_blank"
-        link.rel = "noopener noreferrer"
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        return
-      }
-
-      // Fallback: abrir en nueva pestaña
       window.open(evolution.file_url, "_blank")
     } catch (error) {
       console.error("[v0] Error descargando archivo:", error)
@@ -204,7 +234,11 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-lg">{categoryLabels[category]}</h3>
                     <Button
-                      onClick={() => setShowUploadForm(true)}
+                      onClick={() => {
+                        setObservations("")
+                        setSelectedFile(null)
+                        setShowUploadForm(true)
+                      }}
                       size="sm"
                       className="bg-purple-700 hover:bg-purple-800"
                     >
@@ -240,14 +274,24 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
                                 </CardTitle>
                                 <CardDescription className="text-xs">Registrado por el profesional</CardDescription>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                onClick={() => handleDelete(evolution)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  onClick={() => handleEdit(evolution)}
+                                >
+                                  <FileText className="h-4 w-4" /> {/* Usando icono compatible */}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                  onClick={() => handleDelete(evolution)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </CardHeader>
                           <CardContent className="pb-3">
@@ -275,66 +319,126 @@ export function PsychosocialDataManager({ playerId, user }: PsychosocialDataMana
         </Tabs>
       </CardContent>
 
-      {showUploadForm && (
-        <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Evolución - {categoryLabels[activeTab]}</DialogTitle>
-              <DialogDescription>Agregar observaciones y archivos</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="observations">Observaciones</Label>
-                <Textarea
-                  id="observations"
-                  placeholder="Ingrese observaciones sobre esta evolución..."
-                  value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
-                  rows={4}
-                  className="mt-2"
+      {/* Upload Dialog */}
+      <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Registrar Evolución - {categoryLabels[activeTab]}</DialogTitle>
+            <DialogDescription>Agregar observaciones y archivos</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="observations">Observaciones</Label>
+              <Textarea
+                id="observations"
+                placeholder="Ingrese observaciones sobre esta evolución..."
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="file">Archivo adjunto (opcional)</Label>
+              <div className="mt-2">
+                <input
+                  id="file"
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-purple-50 file:text-purple-700
+                    hover:file:bg-purple-100"
                 />
-              </div>
-              <div>
-                <Label htmlFor="file">Archivo adjunto (opcional)</Label>
-                <div className="mt-2">
-                  <input
-                    id="file"
-                    type="file"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-purple-50 file:text-purple-700
-                      hover:file:bg-purple-100"
-                  />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {selectedFile.name}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setShowUploadForm(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleUpload} disabled={uploading} className="bg-purple-700 hover:bg-purple-800">
-                  {uploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Guardar
-                    </>
-                  )}
-                </Button>
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {selectedFile.name}</p>
+                )}
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowUploadForm(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpload} disabled={uploading} className="bg-purple-700 hover:bg-purple-800">
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Guardar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Evolución</DialogTitle>
+            <DialogDescription>Modifique los datos de la evolución</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit-observations">Observaciones</Label>
+              <Textarea
+                id="edit-observations"
+                placeholder="Ingrese observaciones..."
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-file">Actualizar archivo (opcional)</Label>
+              <div className="mt-2">
+                <input
+                  id="edit-file"
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-purple-50 file:text-purple-700
+                    hover:file:bg-purple-100"
+                />
+                {selectedFile ? (
+                  <p className="text-sm text-muted-foreground mt-2">Nuevo archivo: {selectedFile.name}</p>
+                ) : (
+                  editingEvolution?.file_name && (
+                    <p className="text-sm text-muted-foreground mt-2">Archivo actual: {editingEvolution.file_name}</p>
+                  )
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowEditForm(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdate} disabled={uploading} className="bg-purple-700 hover:bg-purple-800">
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  "Guardar Cambios"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

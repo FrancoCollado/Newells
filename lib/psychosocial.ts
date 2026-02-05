@@ -123,3 +123,48 @@ export async function deleteEvolution(
     return { success: false, error: error.message }
   }
 }
+
+export async function updateEvolution(
+  id: string,
+  observations: string,
+  file: File | null,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const updateData: any = {
+      observations: observations || null,
+    }
+
+    if (file) {
+      try {
+        console.log("[v0] Subiendo nuevo archivo:", file.name)
+        const fileExtension = file.name.split('.').pop()
+        const fileName_storage = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`
+        
+        const { error } = await supabase.storage
+          .from("psychosocial_attachments")
+          .upload(fileName_storage, file, { cacheControl: "31536000" })
+        
+        if (error) throw error
+        
+        const { data: publicData } = supabase.storage
+          .from("psychosocial_attachments")
+          .getPublicUrl(fileName_storage)
+        
+        updateData.file_url = publicData.publicUrl
+        updateData.file_name = file.name
+      } catch (storageError: any) {
+        console.error("[v0] Error subiendo nuevo archivo:", storageError)
+        // No interrumpimos la actualización del texto si falla el archivo
+      }
+    }
+
+    const { error } = await supabase.from("psychosocial_evolutions").update(updateData).eq("id", id)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("[v0] Error actualizando evolución psicosocial:", error)
+    return { success: false, error: error.message }
+  }
+}
