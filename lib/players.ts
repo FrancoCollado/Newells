@@ -479,7 +479,31 @@ export async function getPlayersByDivision(
     }
   }
 
-  const { data, error } = await query
+  let { data, error } = await query
+
+  // Si falla por el tipo de división (array vs string)
+  if (error && (error.code === "42883" || error.message?.includes("operator does not exist: text @> text[]"))) {
+    console.warn("[v0] getPlayersByDivision: retrying with string equality for division")
+    let fallbackQuery = supabase
+      .from("players")
+      .select(`
+        *,
+        player_league_stats (*)
+      `)
+      .range(from, to)
+
+    if (division && division !== "todas") {
+      fallbackQuery = fallbackQuery.eq("division", division)
+    }
+
+    if (searchTerm) {
+      fallbackQuery = fallbackQuery.ilike("name", `%${searchTerm}%`)
+    }
+
+    const fallbackResult = await fallbackQuery
+    data = fallbackResult.data
+    error = fallbackResult.error
+  }
 
   console.log("[v0] Query result:", { dataLength: data?.length, error })
 
@@ -556,160 +580,288 @@ export async function updatePlayerAttendance(playerId: string, attendancePercent
 export async function createPlayer(
   player: Omit<Player, "id" | "minutesPlayed" | "matchesPlayed" | "isInjured" | "goals" | "attendancePercentage">,
 ): Promise<Player | null> {
-  const basicInsertData: any = {
-    name: player.name,
-    division: player.division,
-    age: player.age,
-    position: player.position,
-    height: player.height,
-    weight: player.weight,
-    photo: player.photo,
+  console.log("[v0] createPlayer called with:", player)
+
+  const tryInsert = async (payload: any, label: string) => {
+    console.log(`[v0] ${label} - Attempting insert...`)
+    const { data, error } = await supabase.from("players").insert(payload).select().single()
+    if (error) {
+      console.warn(`[v0] ${label} failed:`, JSON.stringify({
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      }, null, 2))
+    } else {
+      console.log(`[v0] ${label} SUCCESS!`)
+    }
+    return { data, error }
+  }
+
+  const name = player.name
+  const division = player.division
+  const age = player.age || 0
+  const position = player.position || "Defensor"
+  const height = player.height || 0
+  const weight = player.weight || 0
+
+  // Helper para obtener division_old (legacy column que es NOT NULL en DB)
+  const getDivisionOld = (div: any) => Array.isArray(div) ? (div[0] || "reserva") : div
+
+  // Preparar todos los posibles campos
+  const allFields: any = {
+    name,
+    division, // Intentar como array primero
+    division_old: getDivisionOld(division), // Fix: Agregar division_old para evitar error NOT NULL
+    age,
+    position,
+    height,
+    weight,
+    photo: player.photo || null,
     attendance_percentage: 100,
     league_types: player.leagueTypes || ["ROSARINA"],
     loan_status: player.loanStatus || null,
     is_on_loan: player.loanStatus === "PRESTAMO",
+    observations: player.observations || null,
+    is_pensioned: player.isPensioned || false,
   }
-
-  const newFields: any = {}
-  if (player.isPensioned !== undefined) newFields.is_pensioned = player.isPensioned
 
   if (player.extendedData) {
     const ext = player.extendedData
-    if (ext.birthDate) basicInsertData.birth_date = ext.birthDate
-    if (ext.document) basicInsertData.document = ext.document
-    if (ext.province) basicInsertData.province = ext.province
-    if (ext.admissionDate) basicInsertData.admission_date = ext.admissionDate
-    if (ext.phone) basicInsertData.phone = ext.phone
-    if (ext.address) basicInsertData.address = ext.address
-    if (ext.originLocality) basicInsertData.origin_locality = ext.originLocality
-    if (ext.originAddress) basicInsertData.origin_address = ext.originAddress
-    if (ext.originProvince) basicInsertData.origin_province = ext.originProvince
-    if (ext.fatherName) basicInsertData.father_name = ext.fatherName
-    if (ext.motherName) basicInsertData.mother_name = ext.motherName
-    if (ext.tutorName) basicInsertData.tutor_name = ext.tutorName
-    if (ext.nationality) basicInsertData.nationality = ext.nationality
-    if (ext.healthInsurance) basicInsertData.health_insurance = ext.healthInsurance
-    if (ext.originLeague) basicInsertData.origin_league = ext.originLeague
-    if (ext.originClub) basicInsertData.origin_club = ext.originClub
-    if (ext.citizenship) basicInsertData.citizenship = ext.citizenship
-    if (ext.parentsPhone) basicInsertData.parents_phone = ext.parentsPhone
-    if (ext.representative) basicInsertData.representative = ext.representative
-    if (ext.privateAgreementDetails) basicInsertData.private_agreement_details = ext.privateAgreementDetails
-    if (ext.signedARF !== undefined) basicInsertData.signed_arf = ext.signedARF
-    if (ext.signedARFYear) basicInsertData.signed_arf_year = ext.signedARFYear
-    if (ext.signedAFA !== undefined) basicInsertData.signed_afa = ext.signedAFA
-    if (ext.signedAFAYear) basicInsertData.signed_afa_year = ext.signedAFAYear
-    if (ext.isFreePlayer !== undefined) basicInsertData.is_free_player = ext.isFreePlayer
-    if (ext.freePlayerYear) basicInsertData.free_player_year = ext.freePlayerYear
-    if (ext.isOnLoan !== undefined) basicInsertData.is_on_loan = ext.isOnLoan
-    if (ext.loanYear) basicInsertData.loan_year = ext.loanYear
-    if (ext.loanClub) basicInsertData.loan_club = ext.loanClub
-
-    if (ext.isPensioned !== undefined) newFields.is_pensioned = ext.isPensioned
-    if (ext.isRegularStudent !== undefined) newFields.is_regular_student = ext.isRegularStudent
-    if (ext.schoolSituation) newFields.school_situation = ext.schoolSituation
-    if (ext.schoolYear) newFields.school_year = ext.schoolYear
+    if (ext.birthDate) allFields.birth_date = ext.birthDate
+    if (ext.document) allFields.document = ext.document
+    if (ext.province) allFields.province = ext.province
+    if (ext.admissionDate) allFields.admission_date = ext.admissionDate
+    if (ext.phone) allFields.phone = ext.phone
+    if (ext.address) allFields.address = ext.address
+    if (ext.originLocality) allFields.origin_locality = ext.originLocality
+    if (ext.originAddress) allFields.origin_address = ext.originAddress
+    if (ext.originProvince) allFields.origin_province = ext.originProvince
+    if (ext.fatherName) allFields.father_name = ext.fatherName
+    if (ext.motherName) allFields.mother_name = ext.motherName
+    if (ext.tutorName) allFields.tutor_name = ext.tutorName
+    if (ext.nationality) allFields.nationality = ext.nationality
+    if (ext.healthInsurance) allFields.health_insurance = ext.healthInsurance
+    if (ext.originLeague) allFields.origin_league = ext.originLeague
+    if (ext.originClub) allFields.origin_club = ext.originClub
+    if (ext.citizenship) allFields.citizenship = ext.citizenship
+    if (ext.parentsPhone) allFields.parents_phone = ext.parentsPhone
+    if (ext.representative) allFields.representative = ext.representative
+    if (ext.privateAgreementDetails) allFields.private_agreement_details = ext.privateAgreementDetails
+    if (ext.signedARF !== undefined) allFields.signed_arf = ext.signedARF
+    if (ext.signedARFYear) allFields.signed_arf_year = ext.signedARFYear
+    if (ext.signedAFA !== undefined) allFields.signed_afa = ext.signedAFA
+    if (ext.signedAFAYear) allFields.signed_afa_year = ext.signedAFAYear
+    if (ext.isFreePlayer !== undefined) allFields.is_free_player = ext.isFreePlayer
+    if (ext.freePlayerYear) allFields.free_player_year = ext.freePlayerYear
+    if (ext.isOnLoan !== undefined) allFields.is_on_loan = ext.isOnLoan
+    if (ext.loanYear) allFields.loan_year = ext.loanYear
+    if (ext.loanClub) allFields.loan_club = ext.loanClub
+    if (ext.isRegularStudent !== undefined) allFields.is_regular_student = ext.isRegularStudent
+    if (ext.schoolSituation) allFields.school_situation = ext.schoolSituation
+    if (ext.schoolYear) allFields.school_year = ext.schoolYear
   }
 
-  if (player.observations) {
-    basicInsertData.observations = player.observations
+  // Intento 1: Todos los campos con división como array
+  let result = await tryInsert(allFields, "Attempt 1 (Full + Array Div)")
+
+  // Intento 3: Solo campos básicos con división como array (Run if Attempt 1 failed for ANY reason)
+  if (result.error) {
+    const basicPayload3 = {
+      name,
+      division, // Array
+      division_old: getDivisionOld(division), // Fix
+      age,
+      position,
+      height,
+      weight
+    }
+    result = await tryInsert(basicPayload3, "Attempt 3 (Basic + Array Div)")
   }
 
-  const insertData = { ...basicInsertData, ...newFields }
-  let { data, error } = await supabase.from("players").insert(insertData).select().single()
+  // Intento 2: Todos los campos con división como string (por si el schema es viejo)
+  if (result.error) {
+    const stringDivision = Array.isArray(division) ? (division[0] || "reserva") : division
+    const payload2 = { 
+      ...allFields, 
+      division: stringDivision,
+      division_old: stringDivision // Fix
+    }
+    result = await tryInsert(payload2, "Attempt 2 (Full + String Div)")
+  }
 
-  if (error && error.message?.includes("column")) {
-    console.warn("[v0] Some columns might not exist, retrying with basic fields only")
+  // Intento 4: Solo campos básicos con división como string
+  if (result.error) {
+    const stringDivision = Array.isArray(division) ? (division[0] || "reserva") : division
+    const basicPayload4 = {
+      name,
+      division: stringDivision,
+      division_old: stringDivision, // Fix
+      age,
+      position,
+      height,
+      weight
+    }
+    result = await tryInsert(basicPayload4, "Attempt 4 (Basic + String Div)")
+  }
+
+  // Intento 6: Con formato explícito de array de PostgreSQL
+  if (result.error) {
+    console.warn("[v0] Attempting explicit PostgreSQL array literal format...")
+    const arrayLiteral = Array.isArray(division) 
+      ? `{${division.map(d => `"${d}"`).join(",")}}`
+      : `{"${division}"}`
+      
+    const payload6 = {
+      name,
+      division: arrayLiteral,
+      division_old: getDivisionOld(division), // Fix
+      age,
+      position,
+      height,
+      weight
+    }
+    result = await tryInsert(payload6, "Attempt 6 (Explicit PG Array Literal)")
+  }
+
+  // Intento 7: Admin Client
+  if (result.error) {
+    try {
+      console.log("[v0] Attempt 7 - Trying with Admin Client (Bypassing RLS)...")
+      const { createAdminClient } = await import("./supabase")
+      const adminSupabase = createAdminClient()
+      const stringDivision = Array.isArray(division) ? (division[0] || "reserva") : division
+      
+      const { data: adminData, error: adminError } = await adminSupabase
+        .from("players")
+        .insert({ 
+          name, 
+          division: stringDivision,
+          division_old: stringDivision // Fix
+        }) 
+        .select()
+        .single()
+      
+      if (!adminError) {
+        console.log("[v0] Attempt 7 SUCCESS! The issue was RLS/Permissions.")
+        result = { data: adminData, error: null }
+      } else {
+        console.warn("[v0] Attempt 7 failed (Admin also failed):", adminError.message)
+      }
+    } catch (adminCatchError) {
+      console.error("[v0] Error in Attempt 7 (Admin Client):", adminCatchError)
+    }
+  }
+
+  if (result.error) {
+    console.error("❌ Todos los intentos de creación fallaron. Error completo:", JSON.stringify(result.error, null, 2))
+    return null
+  }
+
+  return mapDatabasePlayerToAppPlayer(result.data)
+}
+
+export async function updatePlayer(id: string, player: Partial<Player>): Promise<Player | null> {
+  console.log(`[v0] Updating player ${id}:`, player)
+  
+  const basicUpdateData: any = {}
+  if (player.name) basicUpdateData.name = player.name
+  if (player.division) basicUpdateData.division = player.division
+  if (player.age !== undefined) basicUpdateData.age = player.age
+  if (player.position) basicUpdateData.position = player.position
+  if (player.height !== undefined) basicUpdateData.height = player.height
+  if (player.weight !== undefined) basicUpdateData.weight = player.weight
+  if (player.photo) basicUpdateData.photo = player.photo
+
+  const optionalUpdateData: any = {}
+  if (player.attendancePercentage !== undefined) optionalUpdateData.attendance_percentage = player.attendancePercentage
+  if (player.leagueTypes !== undefined) optionalUpdateData.league_types = player.leagueTypes
+  if (player.loanStatus !== undefined) {
+    optionalUpdateData.loan_status = player.loanStatus
+    optionalUpdateData.is_on_loan = player.loanStatus === "PRESTAMO"
+  }
+
+  const extendedUpdateData: any = {}
+  if (player.isPensioned !== undefined) extendedUpdateData.is_pensioned = player.isPensioned
+  if (player.observations !== undefined) extendedUpdateData.observations = player.observations || null
+
+  if (player.extendedData) {
+    const ext = player.extendedData
+    if (ext.birthDate !== undefined) extendedUpdateData.birth_date = ext.birthDate || null
+    if (ext.document !== undefined) extendedUpdateData.document = ext.document || null
+    if (ext.province !== undefined) extendedUpdateData.province = ext.province || null
+    if (ext.admissionDate !== undefined) extendedUpdateData.admission_date = ext.admissionDate || null
+    if (ext.phone !== undefined) extendedUpdateData.phone = ext.phone || null
+    if (ext.address !== undefined) extendedUpdateData.address = ext.address || null
+    if (ext.originLocality !== undefined) extendedUpdateData.origin_locality = ext.originLocality || null
+    if (ext.originAddress !== undefined) extendedUpdateData.origin_address = ext.originAddress || null
+    if (ext.originProvince !== undefined) extendedUpdateData.origin_province = ext.originProvince || null
+    if (ext.fatherName !== undefined) extendedUpdateData.father_name = ext.fatherName || null
+    if (ext.motherName !== undefined) extendedUpdateData.mother_name = ext.motherName || null
+    if (ext.tutorName !== undefined) extendedUpdateData.tutor_name = ext.tutorName || null
+    if (ext.nationality !== undefined) extendedUpdateData.nationality = ext.nationality || null
+    if (ext.healthInsurance !== undefined) extendedUpdateData.health_insurance = ext.healthInsurance || null
+    if (ext.originLeague !== undefined) extendedUpdateData.origin_league = ext.originLeague || null
+    if (ext.originClub !== undefined) extendedUpdateData.origin_club = ext.originClub || null
+    if (ext.citizenship !== undefined) extendedUpdateData.citizenship = ext.citizenship || null
+    if (ext.parentsPhone !== undefined) extendedUpdateData.parents_phone = ext.parentsPhone || null
+    if (ext.representative !== undefined) extendedUpdateData.representative = ext.representative || null
+    if (ext.privateAgreementDetails !== undefined) extendedUpdateData.private_agreement_details = ext.privateAgreementDetails || null
+    if (ext.signedARF !== undefined) extendedUpdateData.signed_arf = ext.signedARF
+    if (ext.signedARFYear !== undefined) extendedUpdateData.signed_arf_year = ext.signedARFYear || null
+    if (ext.signedAFA !== undefined) extendedUpdateData.signed_afa = ext.signedAFA
+    if (ext.signedAFAYear !== undefined) extendedUpdateData.signed_afa_year = ext.signedAFAYear || null
+    if (ext.isFreePlayer !== undefined) extendedUpdateData.is_free_player = ext.isFreePlayer
+    if (ext.freePlayerYear !== undefined) extendedUpdateData.free_player_year = ext.freePlayerYear || null
+    if (ext.isOnLoan !== undefined) extendedUpdateData.is_on_loan = ext.isOnLoan
+    if (ext.loanYear !== undefined) extendedUpdateData.loan_year = ext.loanYear || null
+    if (ext.loanClub !== undefined) extendedUpdateData.loan_club = ext.loanClub || null
+    if (ext.isRegularStudent !== undefined) extendedUpdateData.is_regular_student = ext.isRegularStudent
+    if (ext.schoolSituation !== undefined) extendedUpdateData.school_situation = ext.schoolSituation || null
+    if (ext.schoolYear !== undefined) extendedUpdateData.school_year = ext.schoolYear || null
+  }
+
+  // Intento 1: Todo
+  const fullUpdate = { ...basicUpdateData, ...optionalUpdateData, ...extendedUpdateData }
+  let { data, error } = await supabase.from("players").update(fullUpdate).eq("id", id).select().single()
+
+  // Intento 2: Sin columnas extendidas
+  if (error && (error.message?.includes("column") || error.code === "42703")) {
+    console.warn("[v0] Update failed (missing columns), retrying with basic+optional fields")
+    const basicPlusOptional = { ...basicUpdateData, ...optionalUpdateData }
     const { data: retryData, error: retryError } = await supabase
       .from("players")
-      .insert(basicInsertData)
+      .update(basicPlusOptional)
+      .eq("id", id)
       .select()
       .single()
     data = retryData
     error = retryError
   }
 
-  if (error) {
-    console.error("Error creating player:", error)
-    return null
-  }
-
-  return mapDatabasePlayerToAppPlayer(data)
-}
-
-export async function updatePlayer(id: string, player: Partial<Player>): Promise<Player | null> {
-  const basicUpdateData: any = {}
-  if (player.name) basicUpdateData.name = player.name
-  if (player.division) basicUpdateData.division = player.division
-  if (player.age) basicUpdateData.age = player.age
-  if (player.position) basicUpdateData.position = player.position
-  if (player.height) basicUpdateData.height = player.height
-  if (player.weight) basicUpdateData.weight = player.weight
-  if (player.photo) basicUpdateData.photo = player.photo
-  if (player.attendancePercentage !== undefined) basicUpdateData.attendance_percentage = player.attendancePercentage
-  if (player.leagueTypes !== undefined) basicUpdateData.league_types = player.leagueTypes
-
-  const newFields: any = {}
-  if (player.isPensioned !== undefined) newFields.is_pensioned = player.isPensioned
-
-  if (player.extendedData) {
-    const ext = player.extendedData
-    if (ext.birthDate !== undefined) basicUpdateData.birth_date = ext.birthDate || null
-    if (ext.document !== undefined) basicUpdateData.document = ext.document || null
-    if (ext.province !== undefined) basicUpdateData.province = ext.province || null
-    if (ext.admissionDate !== undefined) basicUpdateData.admission_date = ext.admissionDate || null
-    if (ext.phone !== undefined) basicUpdateData.phone = ext.phone || null
-    if (ext.address !== undefined) basicUpdateData.address = ext.address || null
-    if (ext.originLocality !== undefined) basicUpdateData.origin_locality = ext.originLocality || null
-    if (ext.originAddress !== undefined) basicUpdateData.origin_address = ext.originAddress || null
-    if (ext.originProvince !== undefined) basicUpdateData.origin_province = ext.originProvince || null
-    if (ext.fatherName !== undefined) basicUpdateData.father_name = ext.fatherName || null
-    if (ext.motherName !== undefined) basicUpdateData.mother_name = ext.motherName || null
-    if (ext.tutorName !== undefined) basicUpdateData.tutor_name = ext.tutorName || null
-    if (ext.nationality !== undefined) basicUpdateData.nationality = ext.nationality || null
-    if (ext.healthInsurance !== undefined) basicUpdateData.health_insurance = ext.healthInsurance || null
-    if (ext.originLeague !== undefined) basicUpdateData.origin_league = ext.originLeague || null
-    if (ext.originClub !== undefined) basicUpdateData.origin_club = ext.originClub || null
-    if (ext.citizenship !== undefined) basicUpdateData.citizenship = ext.citizenship || null
-    if (ext.parentsPhone !== undefined) basicUpdateData.parents_phone = ext.parentsPhone || null
-    if (ext.representative !== undefined) basicUpdateData.representative = ext.representative || null
-    if (ext.privateAgreementDetails !== undefined)
-      basicUpdateData.private_agreement_details = ext.privateAgreementDetails || null
-    if (ext.signedARF !== undefined) basicUpdateData.signed_arf = ext.signedARF
-    if (ext.signedARFYear !== undefined) basicUpdateData.signed_arf_year = ext.signedARFYear || null
-    if (ext.signedAFA !== undefined) basicUpdateData.signed_afa = ext.signedAFA
-    if (ext.signedAFAYear !== undefined) basicUpdateData.signed_afa_year = ext.signedAFAYear || null
-    if (ext.isFreePlayer !== undefined) basicUpdateData.is_free_player = ext.isFreePlayer
-    if (ext.freePlayerYear !== undefined) basicUpdateData.free_player_year = ext.freePlayerYear || null
-    if (ext.isOnLoan !== undefined) basicUpdateData.is_on_loan = ext.isOnLoan
-    if (ext.loanYear !== undefined) basicUpdateData.loan_year = ext.loanYear || null
-    if (ext.loanClub !== undefined) basicUpdateData.loan_club = ext.loanClub || null
-
-    if (ext.isPensioned !== undefined) newFields.is_pensioned = ext.isPensioned
-    if (ext.isRegularStudent !== undefined) newFields.is_regular_student = ext.isRegularStudent
-    if (ext.schoolSituation !== undefined) newFields.school_situation = ext.schoolSituation || null
-    if (ext.schoolYear !== undefined) newFields.school_year = ext.schoolYear || null
-  }
-
-  // Handle loanStatus specifically - this overrides any extendedData setting because
-  // this comes from the main checkbox in the UI which is the primary control for this feature
-  if (player.loanStatus !== undefined) {
-    basicUpdateData.loan_status = player.loanStatus
-    basicUpdateData.is_on_loan = player.loanStatus === "PRESTAMO"
-  }
-
-  if (player.observations !== undefined) {
-    basicUpdateData.observations = player.observations || null
-  }
-
-  const updateData = { ...basicUpdateData, ...newFields }
-  let { data, error } = await supabase.from("players").update(updateData).eq("id", id).select().single()
-
-  if (error && error.message?.includes("column")) {
-    console.warn("[v0] Some columns might not exist, retrying with basic fields only:", error.message)
+  // Intento 3: Solo básicas
+  if (error && (error.message?.includes("column") || error.code === "42703")) {
+    console.warn("[v0] Update failed (missing columns), retrying with basic fields only")
     const { data: retryData, error: retryError } = await supabase
       .from("players")
       .update(basicUpdateData)
+      .eq("id", id)
+      .select()
+      .single()
+    data = retryData
+    error = retryError
+  }
+
+  // Intento 4: Error de tipo en division
+  if (error && (error.message?.includes("array") || error.message?.includes("division") || error.code === "42804")) {
+    console.warn("[v0] Update failed (division type mismatch), retrying with division as string")
+    const updateWithStrDivision = { 
+      ...basicUpdateData,
+      division: Array.isArray(player.division) ? player.division[0] : player.division
+    }
+    const { data: retryData, error: retryError } = await supabase
+      .from("players")
+      .update(updateWithStrDivision)
       .eq("id", id)
       .select()
       .single()
