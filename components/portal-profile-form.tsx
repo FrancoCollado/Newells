@@ -39,7 +39,7 @@ export function PortalProfileForm({ player }: PortalProfileFormProps) {
       } else {
         toast({
           title: "¡Perfil actualizado!",
-          description: "Tus datos personales se han guardado correctamente.",
+          description: result?.message || "Tus datos personales se han guardado correctamente.",
           // Using a style consistent with a success notification
           className: "bg-green-600 border-green-700 text-white", 
         })

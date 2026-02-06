@@ -26,6 +26,9 @@ export async function updatePlayerPhysicals(formData: FormData) {
   const passport_number = (formData.get("passport_number") as string)?.trim() || ""
   const passport_origin = (formData.get("passport_origin") as string)?.trim() || ""
   const rosario_address = (formData.get("rosario_address") as string)?.trim() || ""
+  
+  const heightStr = (formData.get("height") as string)?.trim() || ""
+  const weightStr = (formData.get("weight") as string)?.trim() || ""
 
   // --- VALIDACIONES ---
 
@@ -104,11 +107,21 @@ export async function updatePlayerPhysicals(formData: FormData) {
   if (passport_number) updateData.passport_number = passport_number
   if (passport_origin) updateData.passport_origin = passport_origin
   if (rosario_address) updateData.rosario_address = rosario_address
+  
+  if (heightStr) {
+    const height = parseFloat(heightStr)
+    if (!isNaN(height) && height > 0) updateData.height = height
+  }
+  
+  if (weightStr) {
+    const weight = parseFloat(weightStr)
+    if (!isNaN(weight) && weight > 0) updateData.weight = weight
+  }
 
   // Si no hay datos para actualizar (porque height/weight se ignoran), retornar éxito o error
   if (Object.keys(updateData).length === 0) {
       // Si el usuario solo intentó editar read-only fields, no hacemos nada
-      return { success: true }
+      return { success: true, message: "No hubo cambios para guardar." }
   }
 
   const supabase = createAdminClient()
@@ -124,7 +137,7 @@ export async function updatePlayerPhysicals(formData: FormData) {
   }
 
   revalidatePath("/portal/dashboard")
-  return { success: true }
+  return { success: true, message: "Los datos se han guardado correctamente." }
 }
 
 export async function logoutAction() {
