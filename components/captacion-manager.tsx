@@ -75,6 +75,12 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
     setRows(newRows)
   }
 
+  const handleAddRowAfter = (index: number) => {
+    const newRows = [...rows];
+    newRows.splice(index + 1, 0, { ...EMPTY_ROW });
+    setRows(newRows)
+  }
+
   async function handleSave() {
     if (!newInformeTitle.trim()) return toast({ title: "Falta título", variant: "destructive" })
     setLoading(true)
@@ -260,7 +266,7 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
                       <th className="px-3 border border-slate-700 text-left min-w-[450px]">Características</th>
                       <th className="px-1 border border-slate-700 w-[70px]">Puntaje</th>
                       <th className="px-1 border border-slate-700 w-[70px]">Citar</th>
-                      <th className="px-1 border border-slate-700 w-[40px]"></th>
+                      <th className="px-1 border border-slate-700 w-[80px]">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -284,7 +290,27 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
                         <td className="border p-0"><input className="w-full h-14 px-1 outline-none bg-transparent text-center font-bold text-red-700" value={row.puntaje} onChange={(e) => handleCellChange(i, 'puntaje', e.target.value)} /></td>
                         <td className="border p-0"><input className="w-full h-14 px-1 outline-none bg-transparent text-center" value={row.volver_a_citar} onChange={(e) => handleCellChange(i, 'volver_a_citar', e.target.value)} /></td>
                         <td className="border text-center">
-                          <Button variant="ghost" size="sm" className="h-14 w-full text-red-400" onClick={() => setRows(rows.filter((_, idx) => idx !== i))} disabled={rows.length === 1}><Trash2 className="h-4 w-4 mx-auto"/></Button>
+                          <div className="flex h-14">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-full flex-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 border-r" 
+                              onClick={() => handleAddRowAfter(i)}
+                              title="Insertar fila debajo"
+                            >
+                              <Plus className="h-4 w-4 mx-auto"/>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-full flex-1 text-red-400 hover:text-red-600 hover:bg-red-50" 
+                              onClick={() => setRows(rows.filter((_, idx) => idx !== i))} 
+                              disabled={rows.length === 1}
+                              title="Eliminar fila"
+                            >
+                              <Trash2 className="h-4 w-4 mx-auto"/>
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
