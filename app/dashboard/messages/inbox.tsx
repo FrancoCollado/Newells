@@ -60,6 +60,9 @@ interface LoanPlayer {
     division: string
     photo?: string
     last_seen?: string | null
+    conversation_id: string | null
+    last_message_at: string | null
+    unread_count: number
 }
 
 export function ProfessionalInbox({ 
@@ -459,13 +462,8 @@ export function ProfessionalInbox({
   }
   
   const handleLoanPlayerClick = async (player: LoanPlayer) => {
-      // Check if conversation exists in current list
-      const existing = conversations.find(c => c.player_id === player.id)
-      
-      if (existing) {
-          setSelectedId(existing.id)
-          // Switch to inbox so they see the selected conv
-          setActiveTab("inbox")
+      if (player.conversation_id) {
+          setSelectedId(player.conversation_id)
       } else {
           try {
               const newConv = await createLoanConversationAction(player.id)
@@ -483,7 +481,10 @@ export function ProfessionalInbox({
               }
               setConversations(prev => [fullConv, ...prev])
               setSelectedId(newConv.id)
-              setActiveTab("inbox")
+              
+              setLoanPlayers(prev => prev.map(p => 
+                p.id === player.id ? { ...p, conversation_id: newConv.id } : p
+              ))
           } catch (error) {
               console.error("Error creating conversation", error)
           }
@@ -605,8 +606,17 @@ export function ProfessionalInbox({
                                 <button
                                     key={player.id}
                                     onClick={() => handleLoanPlayerClick(player)}
-                                    className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative hover:bg-muted/60 border border-transparent"
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 group relative",
+                                        selectedId === player.conversation_id 
+                                            ? "bg-red-50 dark:bg-red-900/10 shadow-sm border border-red-100 dark:border-red-900/30" 
+                                            : "hover:bg-muted/60 border border-transparent"
+                                    )}
                                 >
+                                    {selectedId === player.conversation_id && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-red-600 rounded-r-full" />
+                                    )}
+
                                     <div className="relative shrink-0">
                                         <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
                                             <AvatarImage src={player.photo} className="object-cover" />
@@ -617,22 +627,31 @@ export function ProfessionalInbox({
                                         {isOnline && (
                                             <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
                                         )}
+                                        {player.unread_count > 0 && (
+                                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow ring-2 ring-background">
+                                                {player.unread_count}
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-0.5">
-                                            <span className="font-semibold truncate text-sm text-foreground">
+                                            <span className={cn(
+                                                "font-semibold truncate text-sm",
+                                                selectedId === player.conversation_id ? "text-red-900 dark:text-red-100" : "text-foreground"
+                                            )}>
                                                 {player.name}
                                             </span>
-                                            <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
-                                                A Préstamo
-                                            </span>
+                                            {player.last_message_at && (
+                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
+                                                    {format(new Date(player.last_message_at), "HH:mm", { locale: es })}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5 overflow-hidden">
-                                                <User className="h-3 w-3 text-muted-foreground" />
                                                 <span className="text-xs text-muted-foreground truncate">
-                                                    {presenceText}
+                                                    {player.unread_count > 0 ? "Nuevo mensaje" : presenceText || "A Préstamo"}
                                                 </span>
                                             </div>
                                         </div>

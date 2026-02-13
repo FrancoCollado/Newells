@@ -59,14 +59,89 @@ export async function getPlayersOnLoanAction() {
 
   if (!user) throw new Error("Unauthorized")
 
-  const { data, error } = await supabase
+  // Fetch players on loan - check both boolean and status string for robustness
+  const { data: players, error: playersError } = await supabase
     .from("players")
     .select("id, name, division, photo, last_seen")
-    .eq("is_on_loan", true)
+    .or("is_on_loan.eq.true,loan_status.eq.PRESTAMO")
     .order("name")
 
+  if (playersError) throw playersError
+
+  // For each player, check if there's an existing conversation and count unread messages
+  const playersWithConv = await Promise.all(players.map(async (player) => {
+    const { data: conv } = await supabase
+      .from("chat_conversations")
+      .select("id, last_message_at")
+      .eq("player_id", player.id)
+      .in("area", ["General", "Prestamo"])
+      .limit(1)
+      .single()
+
+    let unreadCount = 0
+    if (conv) {
+      const { count } = await supabase
+        .from("chat_messages")
+        .select("*", { count: 'exact', head: true })
+        .eq("conversation_id", conv.id)
+        .eq("sender_type", "PLAYER")
+        .eq("is_read", false)
+      unreadCount = count || 0
+    }
+
+    return {
+      ...player,
+      conversation_id: conv?.id || null,
+      last_message_at: conv?.last_message_at || null,
+      unread_count: unreadCount
+    }
+  }))
+
+  return playersWithConv
+}
+
+export async function sendBulkLoanMessageAction(content: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const { data: players, error } = await supabase
+    .from("players")
+    .select("id")
+    .or("is_on_loan.eq.true,loan_status.eq.PRESTAMO")
+
   if (error) throw error
-  return data
+
+  for (const player of players) {
+    // 1. Get or create conversation
+    let { data: conv } = await supabase
+      .from("chat_conversations")
+      .select("id")
+      .eq("player_id", player.id)
+      .in("area", ["General", "Prestamo"])
+      .limit(1)
+      .single()
+
+    if (!conv) {
+      const { data: newConv } = await supabase
+        .from("chat_conversations")
+        .insert({
+          player_id: player.id,
+          area: "Prestamo",
+          professional_id: user.id
+        })
+        .select("id")
+        .single()
+      conv = newConv
+    }
+
+    if (conv) {
+      await sendMessage(conv.id, "PROFESSIONAL", user.id, content)
+    }
+  }
+
+  revalidatePath("/dashboard/messages")
+  return { success: true, count: players.length }
 }
 
 export async function createLoanConversationAction(playerId: string) {
@@ -104,3 +179,4 @@ export async function createLoanConversationAction(playerId: string) {
   revalidatePath(`/dashboard/messages`)
   return newConv
 }
+
