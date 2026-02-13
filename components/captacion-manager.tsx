@@ -119,9 +119,9 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
     setLoading(false)
   }
 
-  if (!selectedSection) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
+      {!selectedSection ? (
         <div className="w-full md:w-[450px] bg-white h-full p-6 overflow-y-auto shadow-xl">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-red-800 flex items-center gap-2"><Search/> Captación</h2>
@@ -179,49 +179,46 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
             </div>
           </div>
         </div>
-      </div>
-    )
-  }
+      ) : (
+        <div className="w-full md:w-[800px] bg-white h-full flex flex-col shadow-xl">
+          <div className="p-4 border-b flex justify-between items-center bg-white">
+            <Button variant="ghost" onClick={() => setSelectedSection(null)}><ChevronLeft className="mr-1"/> Volver</Button>
+            <h2 className="font-bold text-lg text-slate-700">{selectedSection}</h2>
+            <Button className="bg-red-700 hover:bg-red-800" onClick={() => { setEditingInformeId(null); setNewInformeTitle(""); setRows([{ ...EMPTY_ROW }]); setShowForm(true); }}><PlusCircle className="mr-2 h-4 w-4"/> Nuevo Informe</Button>
+          </div>
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
-      <div className="w-full md:w-[800px] bg-white h-full flex flex-col shadow-xl">
-        <div className="p-4 border-b flex justify-between items-center bg-white">
-          <Button variant="ghost" onClick={() => setSelectedSection(null)}><ChevronLeft className="mr-1"/> Volver</Button>
-          <h2 className="font-bold text-lg text-slate-700">{selectedSection}</h2>
-          <Button className="bg-red-700 hover:bg-red-800" onClick={() => { setEditingInformeId(null); setNewInformeTitle(""); setRows([{ ...EMPTY_ROW }]); setShowForm(true); }}><PlusCircle className="mr-2 h-4 w-4"/> Nuevo Informe</Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-              <Loader2 className="animate-spin mb-2" /> <p>Cargando...</p>
-            </div>
-          ) : informes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl bg-white text-slate-400">
-              <FileText className="h-10 w-10 mb-2 opacity-20" />
-              <p>No hay informes aún</p>
-            </div>
-          ) : (
-            informes.map(inf => (
-              <Card key={inf.id} className="cursor-pointer hover:border-red-300 transition-all group relative" onClick={() => setViewingInforme(inf)}>
-                <CardHeader className="p-4 flex flex-row justify-between items-center space-y-0">
-                  <div className="pr-12">
-                    <CardTitle className="text-red-800 text-base font-bold">{inf.titulo}</CardTitle>
-                    <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">{new Date(inf.created_at).toLocaleDateString()} — {inf.subido_por}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {inf.fotos && inf.fotos.length > 0 && <Camera className="text-slate-300 h-4 w-4" />}
-                    <div className="hidden group-hover:flex items-center gap-1 ml-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(inf); }}><Pencil className="h-4 w-4"/></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(inf.id); }}><Trash2 className="h-4 w-4"/></Button>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Loader2 className="animate-spin mb-2" /> <p>Cargando...</p>
+              </div>
+            ) : informes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl bg-white text-slate-400">
+                <FileText className="h-10 w-10 mb-2 opacity-20" />
+                <p>No hay informes aún</p>
+              </div>
+            ) : (
+              informes.map(inf => (
+                <Card key={inf.id} className="cursor-pointer hover:border-red-300 transition-all group relative" onClick={() => setViewingInforme(inf)}>
+                  <CardHeader className="p-4 flex flex-row justify-between items-center space-y-0">
+                    <div className="pr-12">
+                      <CardTitle className="text-red-800 text-base font-bold">{inf.titulo}</CardTitle>
+                      <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">{new Date(inf.created_at).toLocaleDateString()} — {inf.subido_por}</p>
                     </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))
-          )}
+                    <div className="flex items-center gap-2">
+                      {inf.fotos && inf.fotos.length > 0 && <Camera className="text-slate-300 h-4 w-4" />}
+                      <div className="hidden group-hover:flex items-center gap-1 ml-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={(e) => { e.stopPropagation(); handleEdit(inf); }}><Pencil className="h-4 w-4"/></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(inf.id); }}><Trash2 className="h-4 w-4"/></Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
+      )}
 
         {/* PANTALLA COMPLETA NUEVO/EDITAR INFORME (SIN DIALOG) */}
         {showForm && (
@@ -440,6 +437,5 @@ export function CaptacionManager({ userName, onClose }: { userName: string, onCl
           </div>
         )}
       </div>
-    </div>
   )
 }
