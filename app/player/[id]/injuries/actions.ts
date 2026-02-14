@@ -47,18 +47,33 @@ export async function saveInjuryAction(injuryData: any) {
       responsible_doctor: injuryData.responsibleDoctor || null,
     }
 
-    const { data, error } = await supabase.from("injuries").insert(dbInjury).select().single()
+    let data, error
+
+    if (injuryData.id) {
+      // Update existing injury
+      console.log("[v0] Actualizando lesión:", injuryData.id)
+      const result = await supabase.from("injuries").update(dbInjury).eq("id", injuryData.id).select().single()
+      data = result.data
+      error = result.error
+    } else {
+      // Create new injury
+      console.log("[v0] Creando nueva lesión")
+      const result = await supabase.from("injuries").insert(dbInjury).select().single()
+      data = result.data
+      error = result.error
+
+      if (!error) {
+        console.log("[v0] Actualizando estado del jugador a lesionado")
+        await updatePlayerInjuryStatus(injuryData.playerId, true)
+      }
+    }
 
     if (error) {
-      console.error("[v0] Error al guardar lesión:", error)
+      console.error("[v0] Error al guardar/actualizar lesión:", error)
       throw error
     }
 
     console.log("[v0] Lesión guardada exitosamente")
-
-    console.log("[v0] Actualizando estado del jugador a lesionado")
-    await updatePlayerInjuryStatus(injuryData.playerId, true)
-    console.log("[v0] Estado del jugador actualizado")
 
     return { success: true, data }
   } catch (error: any) {

@@ -24,6 +24,7 @@ export type MedicalRecord = {
   // Allergies and Medication
   allergies?: string
   currentMedication?: string
+  currentIllnesses?: string
 
   // Family Context
   livingWithFather?: boolean
@@ -49,6 +50,7 @@ export type MedicalRecord = {
   familyHistorySuddenDeath?: boolean
   familyHistoryGenetic?: boolean
   familyHistoryHypertension?: boolean
+  familyHistoryComments?: string
 
   // Personal History
   personalPathological?: Array<{ condition: string; details: string }>
@@ -73,6 +75,8 @@ export type MedicalRecord = {
   respiratoryRate?: number
   heightCm?: number
   weightKg?: number
+  pieHabil?: string
+  examinationStudies?: string
 
   // Central Nervous System
   cnsAnomalies?: string
@@ -129,6 +133,40 @@ export type MedicalRecord = {
   hernias?: boolean
   skinAnomalies?: string
 
+  // Physical Examination Protocol
+  examinationGenitals?: string
+  abdPared?: string
+  abdSensibilidad?: string
+  abdOrganomegalia?: string
+  abdMasas?: string
+  posturaIdeal?: boolean
+  posturaCifolordotica?: boolean
+  posturaEspaldaRecta?: boolean
+  posturaEspaldaArqueada?: boolean
+  posturaEscoleosis?: boolean
+  posturaDefectuosaCabezaHombros?: boolean
+  posturaDefectuosaColumnaPelvis?: boolean
+  posturaDefectuosaPiernaRodillaPie?: boolean
+  troncoExtensoresEspalda?: string
+  troncoFlexoresLaterales?: string
+  troncoFlexoresOblicuos?: string
+  troncoFlexoresAnteriores?: string
+  flexLongitudFlexoresCadera?: string
+  flexLongitudIsquiosurales?: string
+  flexInclinacionAdelante?: string
+  flexAmplitudMovimientoTronco?: string
+  flexLongitudFlexoresPlantares?: string
+  flexTensorFasciaLata?: string
+  flexLongitudGlenohumerales?: string
+  flexLongitudRotadoresHombro?: string
+  flexExtensionFlexionCervical?: string
+  movRotacionCaderas?: string
+  movCuclillas?: string
+  movBisagraCadera?: string
+  movCuadripediaFlexoExtension?: string
+  movCuadripediaTorsion?: string
+  examinationObservations?: string
+
   createdAt: string
   updatedAt: string
   createdBy?: string
@@ -156,6 +194,7 @@ function mapDbToMedicalRecord(dbRecord: any): MedicalRecord {
     primaryDoctorPhone: dbRecord.primary_doctor_phone,
     allergies: dbRecord.allergies,
     currentMedication: dbRecord.current_medication,
+    currentIllnesses: dbRecord.current_illnesses,
     livingWithFather: dbRecord.living_with_father,
     livingWithMother: dbRecord.living_with_mother,
     livingWithSiblings: dbRecord.living_with_siblings,
@@ -177,6 +216,7 @@ function mapDbToMedicalRecord(dbRecord: any): MedicalRecord {
     familyHistorySuddenDeath: dbRecord.family_history_sudden_death,
     familyHistoryGenetic: dbRecord.family_history_genetic,
     familyHistoryHypertension: dbRecord.family_history_hypertension,
+    familyHistoryComments: dbRecord.family_history_comments,
     personalPathological: dbRecord.personal_pathological,
     personalSurgical: dbRecord.personal_surgical,
     personalInjuries: dbRecord.personal_injuries,
@@ -189,6 +229,8 @@ function mapDbToMedicalRecord(dbRecord: any): MedicalRecord {
     respiratoryRate: dbRecord.respiratory_rate,
     heightCm: dbRecord.height_cm,
     weightKg: dbRecord.weight_kg,
+    pieHabil: dbRecord.pie_habil,
+    examinationStudies: dbRecord.examination_studies,
     cnsAnomalies: dbRecord.cns_anomalies,
     visualAcuityLeft: dbRecord.visual_acuity_left,
     visualAcuityRight: dbRecord.visual_acuity_right,
@@ -234,6 +276,38 @@ function mapDbToMedicalRecord(dbRecord: any): MedicalRecord {
     varicoseVeins: dbRecord.varicose_veins,
     hernias: dbRecord.hernias,
     skinAnomalies: dbRecord.skin_anomalies,
+    examinationGenitals: dbRecord.examination_genitals,
+    abdPared: dbRecord.abd_pared,
+    abdSensibilidad: dbRecord.abd_sensibilidad,
+    abdOrganomegalia: dbRecord.abd_organomegalia,
+    abdMasas: dbRecord.abd_masas,
+    posturaIdeal: dbRecord.postura_ideal,
+    posturaCifolordotica: dbRecord.postura_cifolordotica,
+    posturaEspaldaRecta: dbRecord.postura_espalda_recta,
+    posturaEspaldaArqueada: dbRecord.postura_espalda_arqueada,
+    posturaEscoleosis: dbRecord.postura_escoleosis,
+    posturaDefectuosaCabezaHombros: dbRecord.postura_defectuosa_cabeza_hombros,
+    posturaDefectuosaColumnaPelvis: dbRecord.postura_defectuosa_columna_pelvis,
+    posturaDefectuosaPiernaRodillaPie: dbRecord.postura_defectuosa_pierna_rodilla_pie,
+    troncoExtensoresEspalda: dbRecord.tronco_extensores_espalda,
+    troncoFlexoresLaterales: dbRecord.tronco_flexores_laterales,
+    troncoFlexoresOblicuos: dbRecord.tronco_flexores_oblicuos,
+    troncoFlexoresAnteriores: dbRecord.tronco_flexores_anteriores,
+    flexLongitudFlexoresCadera: dbRecord.flex_longitud_flexores_cadera,
+    flexLongitudIsquiosurales: dbRecord.flex_longitud_isquiosurales,
+    flexInclinacionAdelante: dbRecord.flex_inclinacion_adelante,
+    flexAmplitudMovimientoTronco: dbRecord.flex_amplitud_movimiento_tronco,
+    flexLongitudFlexoresPlantares: dbRecord.flex_longitud_flexores_plantares,
+    flexTensorFasciaLata: dbRecord.flex_tensor_fascia_lata,
+    flexLongitudGlenohumerales: dbRecord.flex_longitud_glenohumerales,
+    flexLongitudRotadoresHombro: dbRecord.flex_longitud_rotadores_hombro,
+    flexExtensionFlexionCervical: dbRecord.flex_extension_flexion_cervical,
+    movRotacionCaderas: dbRecord.mov_rotacion_caderas,
+    movCuclillas: dbRecord.mov_cuclillas,
+    movBisagraCadera: dbRecord.mov_bisagra_cadera,
+    movCuadripediaFlexoExtension: dbRecord.mov_cuadripedia_flexo_extension,
+    movCuadripediaTorsion: dbRecord.mov_cuadripedia_torsion,
+    examinationObservations: dbRecord.examination_observations,
     createdAt: dbRecord.created_at,
     updatedAt: dbRecord.updated_at,
     createdBy: dbRecord.created_by,
@@ -286,6 +360,7 @@ export async function createOrUpdateMedicalRecord(
     primary_doctor_phone: record.primaryDoctorPhone,
     allergies: record.allergies,
     current_medication: record.currentMedication,
+    current_illnesses: record.currentIllnesses,
     living_with_father: record.livingWithFather,
     living_with_mother: record.livingWithMother,
     living_with_siblings: record.livingWithSiblings,
@@ -307,6 +382,7 @@ export async function createOrUpdateMedicalRecord(
     family_history_sudden_death: record.familyHistorySuddenDeath,
     family_history_genetic: record.familyHistoryGenetic,
     family_history_hypertension: record.familyHistoryHypertension,
+    family_history_comments: record.familyHistoryComments,
     personal_pathological: record.personalPathological,
     personal_surgical: record.personalSurgical,
     personal_injuries: record.personalInjuries,
@@ -319,6 +395,8 @@ export async function createOrUpdateMedicalRecord(
     respiratory_rate: record.respiratoryRate,
     height_cm: record.heightCm,
     weight_kg: record.weightKg,
+    pie_habil: record.pieHabil,
+    examination_studies: record.examinationStudies,
     cns_anomalies: record.cnsAnomalies,
     visual_acuity_left: record.visualAcuityLeft,
     visual_acuity_right: record.visualAcuityRight,
@@ -364,6 +442,38 @@ export async function createOrUpdateMedicalRecord(
     varicose_veins: record.varicoseVeins,
     hernias: record.hernias,
     skin_anomalies: record.skinAnomalies,
+    examination_genitals: record.examinationGenitals,
+    abd_pared: record.abdPared,
+    abd_sensibilidad: record.abdSensibilidad,
+    abd_organomegalia: record.abdOrganomegalia,
+    abd_masas: record.abdMasas,
+    postura_ideal: record.posturaIdeal,
+    postura_cifolordotica: record.posturaCifolordotica,
+    postura_espalda_recta: record.posturaEspaldaRecta,
+    postura_espalda_arqueada: record.posturaEspaldaArqueada,
+    postura_escoleosis: record.posturaEscoleosis,
+    postura_defectuosa_cabeza_hombros: record.posturaDefectuosaCabezaHombros,
+    postura_defectuosa_columna_pelvis: record.posturaDefectuosaColumnaPelvis,
+    postura_defectuosa_pierna_rodilla_pie: record.posturaDefectuosaPiernaRodillaPie,
+    tronco_extensores_espalda: record.troncoExtensoresEspalda,
+    tronco_flexores_laterales: record.troncoFlexoresLaterales,
+    tronco_flexores_oblicuos: record.troncoFlexoresOblicuos,
+    tronco_flexores_anteriores: record.troncoFlexoresAnteriores,
+    flex_longitud_flexores_cadera: record.flexLongitudFlexoresCadera,
+    flex_longitud_isquiosurales: record.flexLongitudIsquiosurales,
+    flex_inclinacion_adelante: record.flexInclinacionAdelante,
+    flex_amplitud_movimiento_tronco: record.flexAmplitudMovimientoTronco,
+    flex_longitud_flexores_plantares: record.flexLongitudFlexoresPlantares,
+    flex_tensor_fascia_lata: record.flexTensorFasciaLata,
+    flex_longitud_glenohumerales: record.flexLongitudGlenohumerales,
+    flex_longitud_rotadores_hombro: record.flexLongitudRotadoresHombro,
+    flex_extension_flexion_cervical: record.flexExtensionFlexionCervical,
+    mov_rotacion_caderas: record.movRotacionCaderas,
+    mov_cuclillas: record.movCuclillas,
+    mov_bisagra_cadera: record.movBisagraCadera,
+    mov_cuadripedia_flexo_extension: record.movCuadripediaFlexoExtension,
+    mov_cuadripedia_torsion: record.movCuadripediaTorsion,
+    examination_observations: record.examinationObservations,
     ...(existing ? { updated_by: userId } : { created_by: userId }),
   }
 

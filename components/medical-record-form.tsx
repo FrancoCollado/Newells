@@ -1,31 +1,71 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { MedicalRecord } from "@/lib/medical-records"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, Loader2, Upload, FileText, X } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { saveStudyAction, getPlayerStudiesAction } from "@/app/actions/medical-studies-actions"
+import type { Player } from "@/lib/players"
 
 type MedicalRecordFormProps = {
   playerId: string
+  player: Player
   existingRecord: MedicalRecord | null
   userId: string
+  userName?: string
   userRole: string
 }
 
-export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }: MedicalRecordFormProps) {
+export function MedicalRecordForm({ playerId, player, existingRecord, userId, userName = "Usuario", userRole }: MedicalRecordFormProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(!existingRecord)
   const [isSaving, setIsSaving] = useState(false)
-  const [formData, setFormData] = useState<Partial<MedicalRecord>>(existingRecord || {})
+  
+  // Combine existing record with player data for autocompletion
+  const [formData, setFormData] = useState<Partial<MedicalRecord>>(() => {
+    const baseData = existingRecord || {}
+    
+    // Autocomplete only if the field is empty in existing record
+    return {
+      ...baseData,
+      birthDate: baseData.birthDate || player.extendedData?.birthDate || "",
+      dni: baseData.dni || player.extendedData?.document || "",
+      phoneMobile: baseData.phoneMobile || player.extendedData?.phone || "",
+      heightCm: baseData.heightCm || player.height || undefined,
+      weightKg: baseData.weightKg || player.weight || undefined,
+      currentAddressProvince: baseData.currentAddressProvince || player.extendedData?.province || "",
+      examiningDoctor: baseData.examiningDoctor || userName || "",
+      pieHabil: baseData.pieHabil || player.dominantFoot || "",
+      // Add other autocompletions if fields match
+    }
+  })
+  
+  // Studies state
+  const [studies, setStudies] = useState<any[]>([])
+  const [studyData, setStudyData] = useState({
+    observations: "",
+    attachments: [] as Array<{ id: string; name: string; type: string; url: string }>,
+  })
+  const [savingStudy, setSavingStudy] = useState(false)
 
   const canEdit = userRole === "medico" || userRole === "dirigente"
+
+  useEffect(() => {
+    const loadStudies = async () => {
+      const data = await getPlayerStudiesAction(playerId)
+      setStudies(data)
+    }
+    loadStudies()
+  }, [playerId])
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -62,16 +102,101 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
     }))
   }
 
+  const handleStudyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    Array.from(files).forEach((file) => {
+      if (file.type !== "application/pdf") {
+        toast({
+          title: "Archivo no permitido",
+          description: "Solo se permiten archivos PDF",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const newAttachment = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: file.type,
+          url: event.target?.result as string,
+        }
+        setStudyData((prev) => ({
+          ...prev,
+          attachments: [...prev.attachments, newAttachment],
+        }))
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeStudyAttachment = (id: string) => {
+    setStudyData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((a) => a.id !== id),
+    }))
+  }
+
+  const handleSaveStudy = async () => {
+    if (!canEdit) return
+
+    if (!studyData.observations.trim() && studyData.attachments.length === 0) {
+      toast({
+        title: "Campos requeridos",
+        description: "Debe agregar observaciones o al menos un archivo PDF",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSavingStudy(true)
+    try {
+      const result = await saveStudyAction(playerId, userId, userName, studyData.observations, studyData.attachments)
+
+      if (result.success) {
+        toast({
+          title: "Estudio guardado",
+          description: "El estudio complementario se ha registrado correctamente",
+        })
+        
+        // Recargar estudios
+        const updatedStudies = await getPlayerStudiesAction(playerId)
+        setStudies(updatedStudies)
+
+        // Limpiar formulario
+        setStudyData({
+          observations: "",
+          attachments: [],
+        })
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (error) {
+      console.error("Error al guardar estudio:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el estudio complementario",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingStudy(false)
+    }
+  }
+
   if (!isEditing && existingRecord) {
-    return <MedicalRecordView record={existingRecord} onEdit={() => setIsEditing(true)} canEdit={canEdit} />
+    return <MedicalRecordView record={existingRecord} onEdit={() => setIsEditing(true)} canEdit={canEdit} studies={studies} />
   }
 
   return (
     <div className="space-y-6">
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="personal">Ficha Médica del Deportista</TabsTrigger>
           <TabsTrigger value="examination">Examen Médico</TabsTrigger>
+          <TabsTrigger value="studies">Estudios Complementarios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal" className="space-y-6">
@@ -222,109 +347,6 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Alergias</Label>
-                  <Textarea
-                    value={formData.allergies || ""}
-                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Medicación Actual</Label>
-                  <Textarea
-                    value={formData.currentMedication || ""}
-                    onChange={(e) => setFormData({ ...formData, currentMedication: e.target.value })}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Family Context */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Contexto Filiar/Convivientes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="livingWithFather"
-                    checked={formData.livingWithFather || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, livingWithFather: !!checked })}
-                  />
-                  <Label htmlFor="livingWithFather">Padre</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="livingWithMother"
-                    checked={formData.livingWithMother || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, livingWithMother: !!checked })}
-                  />
-                  <Label htmlFor="livingWithMother">Madre</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="livingWithSiblings"
-                    checked={formData.livingWithSiblings || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, livingWithSiblings: !!checked })}
-                  />
-                  <Label htmlFor="livingWithSiblings">Hermanos</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="livingWithPartner"
-                    checked={formData.livingWithPartner || false}
-                    onCheckedChange={(checked) => setFormData({ ...formData, livingWithPartner: !!checked })}
-                  />
-                  <Label htmlFor="livingWithPartner">Pareja</Label>
-                </div>
-                <div>
-                  <Label>Otros</Label>
-                  <Input
-                    value={formData.livingWithOthers || ""}
-                    onChange={(e) => setFormData({ ...formData, livingWithOthers: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Estado de Pareja</Label>
-                  <select
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                    value={formData.relationshipStatus || ""}
-                    onChange={(e) => setFormData({ ...formData, relationshipStatus: e.target.value })}
-                  >
-                    <option value="">Seleccionar...</option>
-                    <option value="estable">Estable</option>
-                    <option value="ocasional">Ocasional</option>
-                    <option value="ninguna">Ninguna</option>
-                  </select>
-                </div>
-                <div>
-                  <Label>Sostén Económico</Label>
-                  <select
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                    value={formData.economicSupport || ""}
-                    onChange={(e) => setFormData({ ...formData, economicSupport: e.target.value })}
-                  >
-                    <option value="">Seleccionar...</option>
-                    <option value="personal">Personal</option>
-                    <option value="padres">Padres</option>
-                    <option value="otros">Otros</option>
-                  </select>
-                </div>
-                <div>
-                  <Label>Culto/Religión</Label>
-                  <Input
-                    value={formData.religion || ""}
-                    onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
-                  />
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -457,6 +479,51 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                   <Label htmlFor="familyHistoryHypertension">Tensión arterial alta</Label>
                 </div>
               </div>
+              <div className="mt-4 space-y-2">
+                <Label>Comentarios de Historia Familiar</Label>
+                <Textarea
+                  value={formData.familyHistoryComments || ""}
+                  onChange={(e) => setFormData({ ...formData, familyHistoryComments: e.target.value })}
+                  placeholder="Ingrese comentarios o detalles adicionales sobre la historia familiar..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Critical Medical Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Información Médica Relevante</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Alergias</Label>
+                  <Textarea
+                    value={formData.allergies || ""}
+                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                    placeholder="Especifique alergias..."
+                  />
+                </div>
+                <div>
+                  <Label>Medicación Actual</Label>
+                  <Textarea
+                    value={formData.currentMedication || ""}
+                    onChange={(e) => setFormData({ ...formData, currentMedication: e.target.value })}
+                    placeholder="Especifique si toma medicación actualmente..."
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label>Enfermedades actual</Label>
+                  <Textarea
+                    value={formData.currentIllnesses || ""}
+                    onChange={(e) => setFormData({ ...formData, currentIllnesses: e.target.value })}
+                    placeholder="Especifique si el jugador padece enfermedades actualmente..."
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -468,7 +535,7 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
             <CardContent className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <Label>Patológicos/Quirúrgicos</Label>
+                  <Label>Antecedentes Patológicos</Label>
                   <Button
                     type="button"
                     size="sm"
@@ -508,6 +575,55 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                       size="icon"
                       variant="ghost"
                       onClick={() => removeArrayItem("personalPathological", idx)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <Label>Antecedentes Quirúrgicos</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      addArrayItem("personalSurgical", {
+                        procedure: "",
+                        details: "",
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+                {(formData.personalSurgical || []).map((item: any, idx: number) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <Input
+                      placeholder="Procedimiento"
+                      value={item.procedure}
+                      onChange={(e) => {
+                        const updated = [...(formData.personalSurgical || [])]
+                        updated[idx] = { ...item, procedure: e.target.value }
+                        setFormData({ ...formData, personalSurgical: updated })
+                      }}
+                    />
+                    <Input
+                      placeholder="Detalles"
+                      value={item.details}
+                      onChange={(e) => {
+                        const updated = [...(formData.personalSurgical || [])]
+                        updated[idx] = { ...item, details: e.target.value }
+                        setFormData({ ...formData, personalSurgical: updated })
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeArrayItem("personalSurgical", idx)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -685,7 +801,7 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Presión Arterial</Label>
                   <Input
@@ -802,7 +918,7 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <Label>Campo Visual</Label>
                   <Input
@@ -821,7 +937,25 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                     <option value="">Seleccionar...</option>
                     <option value="derecho">DERECHO</option>
                     <option value="izquierdo">IZQUIERDO</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Pie hábil</Label>
+                  <Input
+                    value={formData.pieHabil || ""}
+                    onChange={(e) => setFormData({ ...formData, pieHabil: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Lateralidad</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                    value={formData.laterality || ""}
+                    onChange={(e) => setFormData({ ...formData, laterality: e.target.value })}
+                  >
+                    <option value="">Seleccionar...</option>
                     <option value="homolateral">HOMOLATERAL</option>
+                    <option value="heterolateral">HETEROLATERAL</option>
                   </select>
                 </div>
               </div>
@@ -861,48 +995,6 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
               <CardTitle>Respiratorio</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Pulmones - Simetría de Tórax</Label>
-                  <Input
-                    placeholder="CONSERVADO"
-                    value={formData.chestSymmetry || ""}
-                    onChange={(e) => setFormData({ ...formData, chestSymmetry: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Auscultación Pectoral</Label>
-                  <Input
-                    placeholder="RNSL, NO RUIDOS AGREGADOS"
-                    value={formData.chestAuscultation || ""}
-                    onChange={(e) => setFormData({ ...formData, chestAuscultation: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Permeabilidad Vía Superior</Label>
-                  <Input
-                    placeholder="PERMEABLE"
-                    value={formData.upperAirwayPermeability || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        upperAirwayPermeability: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Peak Flow</Label>
-                  <Input
-                    value={formData.peakFlow || ""}
-                    onChange={(e) => setFormData({ ...formData, peakFlow: e.target.value })}
-                  />
-                </div>
-              </div>
-
               <div>
                 <Label>Especificar Anomalías</Label>
                 <Textarea
@@ -925,75 +1017,8 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
               <CardTitle>Cardiovascular</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div>
-                  <Label>Pulso - Ritmo</Label>
-                  <Input
-                    placeholder="REGULAR"
-                    value={formData.peripheralPulseRhythm || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        peripheralPulseRhythm: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Carótida</Label>
-                  <Input
-                    placeholder="S/P"
-                    value={formData.carotidPulse || ""}
-                    onChange={(e) => setFormData({ ...formData, carotidPulse: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Radial</Label>
-                  <Input
-                    placeholder="S/P"
-                    value={formData.radialPulse || ""}
-                    onChange={(e) => setFormData({ ...formData, radialPulse: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Pedio</Label>
-                  <Input
-                    placeholder="S/p"
-                    value={formData.pedalPulse || ""}
-                    onChange={(e) => setFormData({ ...formData, pedalPulse: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Tib Post</Label>
-                  <Input
-                    placeholder="S/P"
-                    value={formData.tibialPulse || ""}
-                    onChange={(e) => setFormData({ ...formData, tibialPulse: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Precordial - Sonidos Anómalos</Label>
-                  <Input
-                    placeholder="Ausente"
-                    value={formData.abnormalSounds || ""}
-                    onChange={(e) => setFormData({ ...formData, abnormalSounds: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Ritmo Apical - Frémito</Label>
-                  <Input
-                    placeholder="Ausente"
-                    value={formData.fremitus || ""}
-                    onChange={(e) => setFormData({ ...formData, fremitus: e.target.value })}
-                  />
-                </div>
-              </div>
-
               <div>
-                <Label>Especificar Anomalías Clínicas</Label>
+                <Label>Especificar Anomalías</Label>
                 <Textarea
                   placeholder="NO PRESENTA ANOMALÍAS CLINICAMENTE DETECTABLES"
                   value={formData.cardiovascularAnomalies || ""}
@@ -1001,20 +1026,6 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
                     setFormData({
                       ...formData,
                       cardiovascularAnomalies: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label>Especificar Alteraciones Patológicas</Label>
-                <Textarea
-                  placeholder="NO PRESENTA ALTERACIONES PATOLÓGICAS NI SECUELARES GRAVES"
-                  value={formData.cardiovascularPathologies || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      cardiovascularPathologies: e.target.value,
                     })
                   }
                 />
@@ -1076,6 +1087,390 @@ export function MedicalRecordForm({ playerId, existingRecord, userId, userRole }
               </div>
             </CardContent>
           </Card>
+
+          {/* New Examination Protocol Sections */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Genitales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea 
+                value={formData.examinationGenitals || ""}
+                onChange={e => setFormData({ ...formData, examinationGenitals: e.target.value })}
+                placeholder="Ingrese hallazgos del examen de genitales..."
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Abdominal</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Pared</Label>
+                  <Input 
+                    value={formData.abdPared || ""}
+                    onChange={e => setFormData({ ...formData, abdPared: e.target.value })}
+                    placeholder="Ej: s/p"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sensibilidad</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                    value={formData.abdSensibilidad || ""}
+                    onChange={e => setFormData({ ...formData, abdSensibilidad: e.target.value })}
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="conservada">CONSERVADA</option>
+                    <option value="no conservada">NO CONSERVADA</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Organomegalia</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                    value={formData.abdOrganomegalia || ""}
+                    onChange={e => setFormData({ ...formData, abdOrganomegalia: e.target.value })}
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="presenta">PRESENTA</option>
+                    <option value="no presenta">NO PRESENTA</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Masas</Label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                    value={formData.abdMasas || ""}
+                    onChange={e => setFormData({ ...formData, abdMasas: e.target.value })}
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="palpables">PALPABLES AL EXAMEN FÍSICO</option>
+                    <option value="no palpables">NO PALPABLES AL EXAMEN FÍSICO</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Alineación y Posturas Corporales</CardTitle>
+              <CardDescription>Si la postura ideal es SI, el resto se marcará como NO automáticamente.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-center space-x-2 border p-3 rounded-lg bg-green-50/30">
+                  <Checkbox
+                    id="posturaIdeal"
+                    checked={formData.posturaIdeal || false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setFormData({
+                          ...formData,
+                          posturaIdeal: true,
+                          posturaCifolordotica: false,
+                          posturaEspaldaRecta: false,
+                          posturaEspaldaArqueada: false,
+                          posturaEscoleosis: false,
+                          posturaDefectuosaCabezaHombros: false,
+                          posturaDefectuosaColumnaPelvis: false,
+                          posturaDefectuosaPiernaRodillaPie: false
+                        })
+                      } else {
+                        setFormData({ ...formData, posturaIdeal: false })
+                      }
+                    }}
+                  />
+                  <Label htmlFor="posturaIdeal" className="font-bold">IDEAL</Label>
+                </div>
+                
+                {[
+                  { id: "posturaCifolordotica", label: "Cifolordótica" },
+                  { id: "posturaEspaldaRecta", label: "Espalda recta" },
+                  { id: "posturaEspaldaArqueada", label: "Espalda arqueada" },
+                  { id: "posturaEscoleosis", label: "Escoleosis" },
+                  { id: "posturaDefectuosaCabezaHombros", label: "Postura defectuosa de la cabeza y hombros" },
+                  { id: "posturaDefectuosaColumnaPelvis", label: "Postura defectuosa de columna y pelvis" },
+                  { id: "posturaDefectuosaPiernaRodillaPie", label: "Postura defectuosa de la pierna, rodilla y pie" },
+                ].map((item) => (
+                  <div key={item.id} className="flex items-center space-x-2 border p-3 rounded-lg">
+                    <Checkbox
+                      id={item.id}
+                      checked={formData[item.id as keyof MedicalRecord] as boolean || false}
+                      onCheckedChange={(checked) => {
+                        setFormData({
+                          ...formData,
+                          [item.id]: !!checked,
+                          posturaIdeal: checked ? false : formData.posturaIdeal
+                        })
+                      }}
+                    />
+                    <Label htmlFor={item.id} className="text-sm">{item.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Evaluación de los Músculos del Tronco</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { id: "troncoExtensoresEspalda", label: "Extensores de la espalda (decúbito prono)" },
+                  { id: "troncoFlexoresLaterales", label: "Flexores laterales del tronco (decúbito lateral)" },
+                  { id: "troncoFlexoresOblicuos", label: "Flexores oblicuos del tronco (decúbito supino)" },
+                  { id: "troncoFlexoresAnteriores", label: "Flexores anteriores del tronco" },
+                ].map(item => (
+                  <div key={item.id} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      value={formData[item.id as keyof MedicalRecord] as string || ""}
+                      onChange={e => setFormData({ ...formData, [item.id]: e.target.value })}
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="deficit">Déficit</option>
+                      <option value="sin deficit">Sin déficit</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Test de Flexibilidad y Longitud Muscular</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { id: "flexLongitudFlexoresCadera", label: "Prueba de longitud de flexores de la cadera" },
+                  { id: "flexLongitudIsquiosurales", label: "Prueba de longitud de musculos isquiosurales" },
+                  { id: "flexInclinacionAdelante", label: "Prueba de inclinación hacia delante (Flexibilidad/Isquios)" },
+                  { id: "flexAmplitudMovimientoTronco", label: "Amplitud de movimiento de flexion y extensión del tronco" },
+                  { id: "flexLongitudFlexoresPlantares", label: "Test de longitud de los flexores plantares del tobillo" },
+                  { id: "flexTensorFasciaLata", label: "Pruebas para evaluar el tensor de la fascia lata y banda iliotibial" },
+                  { id: "flexLongitudGlenohumerales", label: "Test de longitud de los musculos glenohumerales y escapulares" },
+                  { id: "flexLongitudRotadoresHombro", label: "Pruebas de longitud de los musculos rotadores del hombro" },
+                  { id: "flexExtensionFlexionCervical", label: "Extensión y flexion de la comuna cervical" },
+                ].map(item => (
+                  <div key={item.id} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      value={formData[item.id as keyof MedicalRecord] as string || ""}
+                      onChange={e => setFormData({ ...formData, [item.id]: e.target.value })}
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="deficit">Déficit</option>
+                      <option value="sin deficit">Sin déficit</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Evaluación de Movilidad</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { id: "movRotacionCaderas", label: "Rotación de caderas" },
+                  { id: "movCuclillas", label: "Cuclillas" },
+                  { id: "movBisagraCadera", label: "Bisagra cadera" },
+                  { id: "movCuadripediaFlexoExtension", label: "Cuadripedia flexo-extensión" },
+                  { id: "movCuadripediaTorsion", label: "Cuadripedia torción" },
+                ].map(item => (
+                  <div key={item.id} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      value={formData[item.id as keyof MedicalRecord] as string || ""}
+                      onChange={e => setFormData({ ...formData, [item.id]: e.target.value })}
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="deficit">Déficit</option>
+                      <option value="sin deficit">Sin déficit</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Observaciones del Examen Físico</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Ingrese comentarios finales del examen físico..."
+                value={formData.examinationObservations || ""}
+                onChange={e => setFormData({ ...formData, examinationObservations: e.target.value })}
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="studies" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subir Estudio Complementario</CardTitle>
+              <CardDescription>Agregue estudios médicos en formato PDF con observaciones</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="study-observations">Observaciones</Label>
+                <Textarea
+                  id="study-observations"
+                  placeholder="Ingrese observaciones sobre el estudio..."
+                  value={studyData.observations}
+                  onChange={(e) => setStudyData((prev) => ({ ...prev, observations: e.target.value }))}
+                  rows={4}
+                  disabled={!canEdit}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Archivos PDF *</Label>
+                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors">
+                  <input
+                    type="file"
+                    onChange={handleStudyFileChange}
+                    multiple
+                    accept="application/pdf"
+                    className="hidden"
+                    id="study-file-upload"
+                    disabled={!canEdit}
+                  />
+                  <label htmlFor="study-file-upload" className="cursor-pointer block w-full h-full">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium mb-1">
+                      Arrastre archivos PDF o haga clic para seleccionar
+                    </p>
+                    <p className="text-xs text-muted-foreground">Solo archivos PDF</p>
+                  </label>
+                </div>
+
+                {studyData.attachments.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <p className="text-sm font-medium">
+                      Archivos seleccionados ({studyData.attachments.length})
+                    </p>
+                    {studyData.attachments.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 p-3 bg-muted rounded-lg group hover:bg-muted/80 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm flex-1 truncate">{file.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeStudyAttachment(file.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={!canEdit}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSaveStudy}
+                disabled={savingStudy || !canEdit}
+                className="w-full bg-red-700 hover:bg-red-800"
+              >
+                {savingStudy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Estudio"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Historial de estudios */}
+          {studies.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Historial de Estudios Complementarios</CardTitle>
+                <CardDescription>
+                  {studies.length} estudio{studies.length !== 1 ? "s" : ""} registrado{studies.length !== 1 ? "s" : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {studies.map((study) => (
+                  <Card key={study.id} className="bg-muted/30">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">Subido por: {study.uploaded_by_name}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {new Date(study.created_at).toLocaleString("es-AR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {study.observations && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Observaciones:</Label>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{study.observations}</p>
+                        </div>
+                      )}
+
+                      {study.attachments && study.attachments.length > 0 && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Archivos adjuntos:</Label>
+                          <div className="space-y-2 mt-2">
+                            {study.attachments.map((file: any) => (
+                              <div key={file.id} className="flex items-center gap-2 p-2 bg-background rounded">
+                                <FileText className="h-4 w-4 text-red-600" />
+                                <a
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm flex-1 truncate hover:underline text-red-600"
+                                >
+                                  {file.name}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -1097,19 +1492,22 @@ function MedicalRecordView({
   record,
   onEdit,
   canEdit,
+  studies = [],
 }: {
   record: MedicalRecord
   onEdit: () => void
   canEdit: boolean
+  studies?: any[]
 }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-end">{canEdit && <Button onClick={onEdit}>Editar Ficha Médica</Button>}</div>
 
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="personal">Ficha Médica del Deportista</TabsTrigger>
           <TabsTrigger value="examination">Examen Médico</TabsTrigger>
+          <TabsTrigger value="studies">Estudios Complementarios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal" className="space-y-6">
@@ -1135,31 +1533,6 @@ function MedicalRecordView({
               <InfoRow label="Nº Seguridad Social" value={record.socialSecurityNumber} />
               <InfoRow label="Médico de Cabecera" value={record.primaryDoctorName} />
               <InfoRow label="Teléfono del Médico" value={record.primaryDoctorPhone} />
-              <InfoRow label="Alergias" value={record.allergies} />
-              <InfoRow label="Medicación Actual" value={record.currentMedication} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Contexto Familiar</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <InfoRow
-                label="Convive con"
-                value={[
-                  record.livingWithFather && "Padre",
-                  record.livingWithMother && "Madre",
-                  record.livingWithSiblings && "Hermanos",
-                  record.livingWithPartner && "Pareja",
-                  record.livingWithOthers,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-              />
-              <InfoRow label="Estado de Pareja" value={record.relationshipStatus} />
-              <InfoRow label="Sostén Económico" value={record.economicSupport} />
-              <InfoRow label="Religión" value={record.religion} />
             </CardContent>
           </Card>
 
@@ -1183,18 +1556,50 @@ function MedicalRecordView({
                 {record.familyHistoryGenetic && <div>✓ Anomalías genéticas</div>}
                 {record.familyHistoryHypertension && <div>✓ Hipertensión arterial</div>}
               </div>
+              {record.familyHistoryComments && (
+                <div className="mt-4 pt-4 border-t">
+                  <Label className="text-xs text-muted-foreground">Comentarios:</Label>
+                  <p className="text-sm mt-1 whitespace-pre-wrap">{record.familyHistoryComments}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Información Médica Relevante</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow label="Alergias" value={record.allergies} />
+              <InfoRow label="Medicación Actual" value={record.currentMedication} />
+              <InfoRow label="Enfermedades actual" value={record.currentIllnesses} />
             </CardContent>
           </Card>
 
           {record.personalPathological && record.personalPathological.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Antecedentes Patológicos/Quirúrgicos</CardTitle>
+                <CardTitle>Antecedentes Patológicos</CardTitle>
               </CardHeader>
               <CardContent>
                 {record.personalPathological.map((item: any, idx: number) => (
                   <div key={idx} className="mb-2">
                     <strong>{item.condition}:</strong> {item.details}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {record.personalSurgical && record.personalSurgical.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Antecedentes Quirúrgicos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {record.personalSurgical.map((item: any, idx: number) => (
+                  <div key={idx} className="mb-2">
+                    <strong>{item.procedure}:</strong> {item.details}
                   </div>
                 ))}
               </CardContent>
@@ -1278,6 +1683,8 @@ function MedicalRecordView({
               <InfoRow label="Movimientos Oculares" value={record.ocularMovements} />
               <InfoRow label="Campo Visual" value={record.visualField} />
               <InfoRow label="Ojo Director" value={record.dominantEye} />
+              <InfoRow label="Pie hábil" value={record.pieHabil} />
+              <InfoRow label="Lateralidad" value={record.laterality} />
               <InfoRow label="Pupilas" value={record.pupils} />
               <InfoRow label="Amígdalas" value={record.tonsils} />
               <InfoRow label="Anomalías ENT" value={record.entAnomalies} />
@@ -1289,10 +1696,6 @@ function MedicalRecordView({
               <CardTitle>Sistema Respiratorio</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <InfoRow label="Simetría de Tórax" value={record.chestSymmetry} />
-              <InfoRow label="Auscultación Pectoral" value={record.chestAuscultation} />
-              <InfoRow label="Permeabilidad Vía Superior" value={record.upperAirwayPermeability} />
-              <InfoRow label="Peak Flow" value={record.peakFlow} />
               <InfoRow label="Anomalías Respiratorias" value={record.respiratoryAnomalies} />
             </CardContent>
           </Card>
@@ -1302,15 +1705,7 @@ function MedicalRecordView({
               <CardTitle>Sistema Cardiovascular</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <InfoRow label="Pulso Periférico" value={record.peripheralPulseRhythm} />
-              <InfoRow
-                label="Pulsos"
-                value={`Carótida: ${record.carotidPulse || ""}, Radial: ${record.radialPulse || ""}, Pedio: ${record.pedalPulse || ""}, Tibial: ${record.tibialPulse || ""}`}
-              />
-              <InfoRow label="Sonidos Anómalos" value={record.abnormalSounds} />
-              <InfoRow label="Frémito" value={record.fremitus} />
               <InfoRow label="Anomalías Cardiovasculares" value={record.cardiovascularAnomalies} />
-              <InfoRow label="Patologías Cardiovasculares" value={record.cardiovascularPathologies} />
             </CardContent>
           </Card>
 
@@ -1326,6 +1721,148 @@ function MedicalRecordView({
               <InfoRow label="Anomalías de Piel" value={record.skinAnomalies} />
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Genitales y Abdominal</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow label="Genitales" value={record.examinationGenitals} />
+              <InfoRow label="Pared Abdominal" value={record.abdPared} />
+              <InfoRow label="Sensibilidad Abdominal" value={record.abdSensibilidad} />
+              <InfoRow label="Organomegalia" value={record.abdOrganomegalia} />
+              <InfoRow label="Masas" value={record.abdMasas} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Alineación y Posturas Corporales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {record.posturaIdeal && <div className="font-bold text-green-600">✓ POSTURA IDEAL</div>}
+                {record.posturaCifolordotica && <div>• Cifolordótica</div>}
+                {record.posturaEspaldaRecta && <div>• Espalda recta</div>}
+                {record.posturaEspaldaArqueada && <div>• Espalda arqueada</div>}
+                {record.posturaEscoleosis && <div>• Escoleosis</div>}
+                {record.posturaDefectuosaCabezaHombros && <div>• Postura defectuosa de la cabeza y hombros</div>}
+                {record.posturaDefectuosaColumnaPelvis && <div>• Postura defectuosa de columna y pelvis</div>}
+                {record.posturaDefectuosaPiernaRodillaPie && <div>• Postura defectuosa de la pierna, rodilla y pie</div>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Evaluación de los Músculos del Tronco</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow label="Extensores de la espalda" value={record.troncoExtensoresEspalda} />
+              <InfoRow label="Flexores laterales" value={record.troncoFlexoresLaterales} />
+              <InfoRow label="Flexores oblicuos" value={record.troncoFlexoresOblicuos} />
+              <InfoRow label="Flexores anteriores" value={record.troncoFlexoresAnteriores} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Flexibilidad y Movilidad</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase text-muted-foreground">Test de Flexibilidad</h4>
+                <InfoRow label="Flexores cadera" value={record.flexLongitudFlexoresCadera} />
+                <InfoRow label="Isquiosurales" value={record.flexLongitudIsquiosurales} />
+                <InfoRow label="Inclinación adelante" value={record.flexInclinacionAdelante} />
+                <InfoRow label="Movimiento tronco" value={record.flexAmplitudMovimientoTronco} />
+                <InfoRow label="Flexores plantares" value={record.flexLongitudFlexoresPlantares} />
+                <InfoRow label="Tensor fascia lata" value={record.flexTensorFasciaLata} />
+                <InfoRow label="Glenohumerales" value={record.flexLongitudGlenohumerales} />
+                <InfoRow label="Rotadores hombro" value={record.flexLongitudRotadoresHombro} />
+                <InfoRow label="Cervical" value={record.flexExtensionFlexionCervical} />
+              </div>
+              <div className="pt-4 border-t space-y-3">
+                <h4 className="text-xs font-bold uppercase text-muted-foreground">Evaluación de Movilidad</h4>
+                <InfoRow label="Rotación caderas" value={record.movRotacionCaderas} />
+                <InfoRow label="Cuclillas" value={record.movCuclillas} />
+                <InfoRow label="Bisagra cadera" value={record.movBisagraCadera} />
+                <InfoRow label="Cuadripedia flexo-extensión" value={record.movCuadripediaFlexoExtension} />
+                <InfoRow label="Cuadripedia torsión" value={record.movCuadripediaTorsion} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Observaciones Finales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap">{record.examinationObservations}</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="studies" className="space-y-6">
+          {studies.length > 0 ? (
+            <div className="space-y-4">
+              {studies.map((study) => (
+                <Card key={study.id} className="bg-muted/30">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base">Subido por: {study.uploaded_by_name}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {new Date(study.created_at).toLocaleString("es-AR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {study.observations && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Observaciones:</Label>
+                        <p className="text-sm mt-1 whitespace-pre-wrap">{study.observations}</p>
+                      </div>
+                    )}
+
+                    {study.attachments && study.attachments.length > 0 && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Archivos adjuntos:</Label>
+                        <div className="space-y-2 mt-2">
+                          {study.attachments.map((file: any) => (
+                            <div key={file.id} className="flex items-center gap-2 p-2 bg-background rounded">
+                              <FileText className="h-4 w-4 text-red-600" />
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm flex-1 truncate hover:underline text-red-600"
+                              >
+                                {file.name}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                No hay estudios complementarios registrados.
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

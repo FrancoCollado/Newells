@@ -102,7 +102,14 @@ export default async function MedicalRecordPage({
         </p>
       </div>
 
-      <MedicalRecordForm playerId={id} existingRecord={medicalRecord} userId={user.id} userRole={user.role} />
+      <MedicalRecordForm 
+        playerId={id} 
+        player={player}
+        existingRecord={medicalRecord} 
+        userId={user.id} 
+        userName={user.name} 
+        userRole={user.role} 
+      />
     </div>
   )
 }

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Loader2, Upload, FileText, X } from "lucide-react" // Added Upload, FileText, X
+import { ArrowLeft, Loader2, Upload, FileText, X, Pencil } from "lucide-react" // Added Upload, FileText, X, Pencil
 import { hasPermission } from "@/lib/rbac"
 import { useToast } from "@/hooks/use-toast"
 
@@ -46,6 +46,7 @@ export default function PlayerInjuriesPage() {
   const [activeTab, setActiveTab] = useState("lesiones")
   const [isInjured, setIsInjured] = useState(false)
   const [viewingInjuryId, setViewingInjuryId] = useState<string | null>(null)
+  const [editingInjuryId, setEditingInjuryId] = useState<string | null>(null)
 
   const [existingInjuries, setExistingInjuries] = useState<Injury[]>([])
   const [existingIllnesses, setExistingIllnesses] = useState<Illness[]>([])
@@ -77,7 +78,7 @@ export default function PlayerInjuriesPage() {
     affectedSide: "" as string,
 
     // Tipo de lesión
-    injuryType: [],
+    injuryType: [] as string[],
     injuryTypeOther: "",
     clinicalDiagnosis: "",
 
@@ -99,6 +100,15 @@ export default function PlayerInjuriesPage() {
     // Observaciones
     medicalObservations: "",
     responsibleDoctor: "",
+
+    // RTP
+    medicalDischargeDate: "",
+    progressiveReturnDate: "",
+    competitiveRtpDate: "",
+    rtpCriteriaClinical: false,
+    rtpCriteriaFunctional: false,
+    rtpCriteriaStrength: false,
+    rtpCriteriaGps: false,
   })
 
   const [illnessData, setIllnessData] = useState({
@@ -114,6 +124,23 @@ export default function PlayerInjuriesPage() {
     // Sistema orgánico afectado - ahora como arrays para múltiple selección
     sistemasAfectados: [] as string[],
     otroSistemaDescripcion: "",
+    
+    // Detailed systems checkboxes (as per usage in render)
+    respiratorio: false,
+    dermatologico: false,
+    neurologico: false,
+    inmunologico: false,
+    metabolico: false,
+    trastornoReumatologico: false,
+    renalUrogenital: false,
+    hematologico: false,
+    cardiovascular: false,
+    psiquiatrica: false,
+    dental: false,
+    oftalmologico: false,
+    ambiental: false,
+    otroSistema: false,
+
     nuevaLesion: "",
     diagnostico: "",
     otrosComentarios: "",
@@ -165,6 +192,84 @@ export default function PlayerInjuriesPage() {
     }))
   }
 
+  const handleEditInjury = (injury: Injury) => {
+    setEditingInjuryId(injury.id)
+    setInjuryData({
+      injuryDate: injury.injuryDate,
+      injuryTime: injury.injuryTime || "",
+      context: Array.isArray(injury.context) ? injury.context : injury.context ? [injury.context] : [],
+      gameMinute: injury.gameMinute || "",
+      surface: Array.isArray(injury.surface) ? injury.surface : injury.surface ? [injury.surface] : [],
+      mechanismType: Array.isArray(injury.mechanismType) ? injury.mechanismType : injury.mechanismType ? [injury.mechanismType] : [],
+      specificSituation: Array.isArray(injury.specificSituation) ? injury.specificSituation : injury.specificSituation ? [injury.specificSituation] : [],
+      anatomicalLocation: Array.isArray(injury.anatomicalLocation) ? (injury.anatomicalLocation as unknown as string[]) : (injury.anatomicalLocation ? [injury.anatomicalLocation] : []),
+      affectedSide: injury.affectedSide || "",
+      injuryType: Array.isArray(injury.injuryType) ? injury.injuryType : injury.injuryType ? [injury.injuryType] : [],
+      injuryTypeOther: injury.injuryTypeOther || "",
+      clinicalDiagnosis: injury.clinicalDiagnosis || "",
+      severity: injury.severity || "",
+      daysAbsent: injury.daysAbsent?.toString() || "",
+      evolutionType: injury.evolutionType || "",
+      treatment: Array.isArray(injury.treatment) ? (injury.treatment as unknown as string[]) : (injury.treatment ? [injury.treatment as unknown as string] : []),
+      hasUltrasound: injury.hasUltrasound,
+      hasMri: injury.hasMri,
+      hasXray: injury.hasXray,
+      hasCt: injury.hasCt,
+      imagingFindings: injury.imagingFindings || "",
+      medicalObservations: injury.medicalObservations || "",
+      responsibleDoctor: injury.responsibleDoctor || "",
+      medicalDischargeDate: injury.medicalDischargeDate || "",
+      progressiveReturnDate: injury.progressiveReturnDate || "",
+      competitiveRtpDate: injury.competitiveRtpDate || "",
+      rtpCriteriaClinical: injury.rtpCriteriaClinical,
+      rtpCriteriaFunctional: injury.rtpCriteriaFunctional,
+      rtpCriteriaStrength: injury.rtpCriteriaStrength,
+      rtpCriteriaGps: injury.rtpCriteriaGps,
+    })
+    
+    // Scroll to form
+    const formElement = document.getElementById("injury-form")
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  const cancelEditInjury = () => {
+    setEditingInjuryId(null)
+    setInjuryData({
+      injuryDate: "",
+      injuryTime: "",
+      context: [],
+      gameMinute: "",
+      surface: [],
+      mechanismType: [],
+      specificSituation: [],
+      anatomicalLocation: [],
+      affectedSide: "",
+      injuryType: [],
+      injuryTypeOther: "",
+      clinicalDiagnosis: "",
+      severity: "",
+      daysAbsent: "",
+      evolutionType: "",
+      treatment: [],
+      hasUltrasound: false,
+      hasMri: false,
+      hasXray: false,
+      hasCt: false,
+      imagingFindings: "",
+      medicalObservations: "",
+      responsibleDoctor: user?.name || "",
+      medicalDischargeDate: "",
+      progressiveReturnDate: "",
+      competitiveRtpDate: "",
+      rtpCriteriaClinical: false,
+      rtpCriteriaFunctional: false,
+      rtpCriteriaStrength: false,
+      rtpCriteriaGps: false,
+    })
+  }
+
   // Auto-complete responsibleDoctor with current user name
   useEffect(() => {
     if (user?.name && injuryData.responsibleDoctor === "") {
@@ -174,8 +279,6 @@ export default function PlayerInjuriesPage() {
       }))
     }
   }, [user?.name])
-
-  // </CHANGE>
 
   const handleInjuryStatusChange = async (newStatus: boolean) => {
     if (!player) return
@@ -198,45 +301,37 @@ export default function PlayerInjuriesPage() {
   }
 
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
       try {
-        setLoading(true) // Moved setLoading(true) here
         const currentUser = await getCurrentUser()
-        const playerId = params.id as string // Defined playerId here
+        const playerId = params.id as string 
 
         if (!currentUser) {
-          router.push("/login")
+          if (isMounted) router.push("/login")
           return
         }
 
         // Validar permiso para ver registros médicos
         if (!hasPermission(currentUser.role, "view_medical_records")) {
-          router.push("/dashboard")
+          if (isMounted) router.push("/dashboard")
           return
         }
 
-        setUser(currentUser)
+        if (isMounted) setUser(currentUser)
 
         const foundPlayer = await getPlayerById(playerId)
         if (!foundPlayer) {
-          router.push("/dashboard")
+          if (isMounted) router.push("/dashboard")
           return
         }
-        setPlayer(foundPlayer)
-        console.log("[v0] Loading player data for ID:", playerId)
-        // setPlayer(playerData) // This line is redundant if foundPlayer is used
-        console.log("[v0] Player loaded:", {
-          name: foundPlayer.name,
-          age: foundPlayer.age,
-          height: foundPlayer.height,
-          weight: foundPlayer.weight,
-          leagueStatsCount: foundPlayer.leagueStats?.length || 0,
-          leagueStats: foundPlayer.leagueStats,
-        })
-
-        // Actualizar el estado inicial de isInjured basado en los datos del jugador
-        if (foundPlayer && foundPlayer.isInjured !== undefined) {
-          setIsInjured(foundPlayer.isInjured)
+        
+        if (isMounted) {
+            setPlayer(foundPlayer)
+            // Actualizar el estado inicial de isInjured basado en los datos del jugador
+            if (foundPlayer.isInjured !== undefined) {
+                setIsInjured(foundPlayer.isInjured)
+            }
         }
 
         console.log("[v0] Cargando lesiones y enfermedades del jugador...")
@@ -247,34 +342,43 @@ export default function PlayerInjuriesPage() {
           getPlayerStudiesAction(playerId),
         ])
 
-        console.log("[v0] Lesiones cargadas:", injuriesResult?.data?.length || 0)
-        console.log("[v0] Enfermedades cargadas:", illnessesResult?.data?.length || 0)
-        console.log("[v0] Estudios cargados:", studiesResult?.length || 0) // Adjusted log for studies
+        if (isMounted) {
+            if (injuriesResult.success) {
+            setExistingInjuries(injuriesResult.data)
+            }
 
-        if (injuriesResult.success) {
-          // console.log("[v0] Lesiones cargadas:", injuriesResult.data.length)
-          setExistingInjuries(injuriesResult.data)
+            if (illnessesResult.success) {
+            setExistingIllnesses(illnessesResult.data)
+            }
+            // Set existing studies directly
+            setExistingStudies(studiesResult || [])
         }
-
-        if (illnessesResult.success) {
-          // console.log("[v0] Enfermedades cargadas:", illnessesResult.data.length)
-          setExistingIllnesses(illnessesResult.data)
-        }
-        // Set existing studies directly
-        setExistingStudies(studiesResult || [])
       } catch (error) {
         console.error("[v0] Error loading data:", error)
-        toast({
-          title: "Error",
-          description: "No se pudo cargar la información del jugador",
-          variant: "destructive",
-        })
+        if (isMounted) {
+            toast({
+            title: "Error",
+            description: "No se pudo cargar la información del jugador",
+            variant: "destructive",
+            })
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
-    loadData()
-  }, [params.id, router, toast]) // Added toast dependency
+
+    setLoading(true)
+    
+    // Race promise to enforce timeout
+    const loadPromise = loadData()
+    const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 8000))
+
+    Promise.race([loadPromise, timeoutPromise]).then(() => {
+       if (isMounted && loading) setLoading(false)
+    })
+
+    return () => { isMounted = false }
+  }, [params.id, router, toast])
 
   const updateInjuryData = (field: string, value: any) => {
     setInjuryData((prev) => {
@@ -391,6 +495,7 @@ export default function PlayerInjuriesPage() {
     try {
       const result = await saveInjuryAction({
         playerId: params.id as string,
+        id: editingInjuryId || undefined,
         ...injuryData,
       })
 
@@ -401,7 +506,7 @@ export default function PlayerInjuriesPage() {
       console.log("[v0] Lesión guardada exitosamente")
       toast({
         title: "Éxito",
-        description: "La lesión ha sido registrada correctamente",
+        description: editingInjuryId ? "La lesión ha sido actualizada correctamente" : "La lesión ha sido registrada correctamente",
       })
 
       const injuriesResult = await getPlayerInjuriesAction(params.id as string)
@@ -409,39 +514,8 @@ export default function PlayerInjuriesPage() {
         setExistingInjuries(injuriesResult.data)
       }
 
-      // Limpiar formulario
-      setInjuryData({
-        injuryDate: "",
-        injuryTime: "",
-        context: [],
-        gameMinute: "",
-        surface: [],
-        mechanismType: [],
-        specificSituation: [],
-        anatomicalLocation: [],
-        affectedSide: "",
-        injuryType: [],
-        injuryTypeOther: "",
-        clinicalDiagnosis: "",
-        severity: "",
-        daysAbsent: "",
-        evolutionType: "",
-        treatment: [],
-        hasUltrasound: false,
-        hasMri: false,
-        hasXray: false,
-        hasCt: false,
-        imagingFindings: "",
-        medicalDischargeDate: "",
-        progressiveReturnDate: "",
-        competitiveRtpDate: "",
-        rtpCriteriaClinical: false,
-        rtpCriteriaFunctional: false,
-        rtpCriteriaStrength: false,
-        rtpCriteriaGps: false,
-        medicalObservations: "",
-        responsibleDoctor: "",
-      })
+      // Limpiar formulario y estado de edición
+      cancelEditInjury()
     } catch (error) {
       console.error("[v0] Error al guardar lesión:", error)
       toast({
@@ -510,6 +584,14 @@ export default function PlayerInjuriesPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-red-700" />
+      </div>
+    )
+  }
+
   if (!user || !player) return null
 
   const canEdit = hasPermission(user.role, "edit_medical_records")
@@ -537,25 +619,6 @@ export default function PlayerInjuriesPage() {
         </header>
 
         <main className="container mx-auto px-4 py-8">
-          <Card className="mb-6 border-orange-200 bg-orange-50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-orange-900">Estado del Jugador</CardTitle>
-                  <CardDescription>Marcar si el jugador se encuentra lesionado</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={isInjured}
-                    onCheckedChange={handleInjuryStatusChange}
-                    disabled={!user || !hasPermission(user.role, "edit_medical_records")}
-                  />
-                  <Label className="text-base font-medium">{isInjured ? "Lesionado" : "Disponible"}</Label>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Registro de Lesiones y Enfermedades</CardTitle>
@@ -603,13 +666,24 @@ export default function PlayerInjuriesPage() {
                                   </Badge>
                                 )}
                                 {viewingInjuryId !== injury.id && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => setViewingInjuryId(injury.id)}
-                                  >
-                                    Ver Detalles
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => setViewingInjuryId(injury.id)}
+                                    >
+                                      Ver Detalles
+                                    </Button>
+                                    {canEdit && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleEditInjury(injury)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -650,9 +724,14 @@ export default function PlayerInjuriesPage() {
                     />
                   )}
                   {/* Formulario de nueva lesión */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Registrar Nueva Lesión</CardTitle>
+                  <Card id="injury-form">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle>{editingInjuryId ? "Editar Lesión" : "Registrar Nueva Lesión"}</CardTitle>
+                      {editingInjuryId && (
+                        <Button variant="ghost" size="sm" onClick={cancelEditInjury}>
+                          Cancelar Edición
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent>
                       {/* Sección 1: Datos Generales */}
@@ -661,7 +740,7 @@ export default function PlayerInjuriesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">Nombre y Apellido</Label>
-                            <Input value={player.name} disabled className="bg-muted" />
+                            <Input value={player.name || ""} disabled className="bg-muted" />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">DNI / ID interno</Label>
@@ -673,15 +752,15 @@ export default function PlayerInjuriesPage() {
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">Posición</Label>
-                            <Input value={player.position} disabled className="bg-muted" />
+                            <Input value={player.position || ""} disabled className="bg-muted" />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">Pierna dominante</Label>
-                            <Input value={player.dominantFoot} disabled className="bg-muted" />
+                            <Input value={player.dominantFoot || ""} disabled className="bg-muted" />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">Categoría</Label>
-                            <Input value={player.division} disabled className="bg-muted" />
+                            <Input value={player.division?.toString() || ""} disabled className="bg-muted" />
                           </div>
                         </div>
                       </div>
@@ -1230,10 +1309,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="treatment-conservador"
-                                checked={injuryData.treatment === "conservador"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("treatment", checked ? "conservador" : "")
-                                }
+                                checked={injuryData.treatment.includes("conservador")}
+                                onCheckedChange={() => updateInjuryData("treatment", "conservador")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="treatment-conservador" className="font-normal">
@@ -1243,10 +1320,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="treatment-quirurgico"
-                                checked={injuryData.treatment === "quirurgico"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("treatment", checked ? "quirurgico" : "")
-                                }
+                                checked={injuryData.treatment.includes("quirurgico")}
+                                onCheckedChange={() => updateInjuryData("treatment", "quirurgico")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="treatment-quirurgico" className="font-normal">
@@ -1256,10 +1331,8 @@ export default function PlayerInjuriesPage() {
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="treatment-infiltracion"
-                                checked={injuryData.treatment === "infiltracion_prp"}
-                                onCheckedChange={(checked) =>
-                                  updateInjuryData("treatment", checked ? "infiltracion_prp" : "")
-                                }
+                                checked={injuryData.treatment.includes("infiltracion_prp")}
+                                onCheckedChange={() => updateInjuryData("treatment", "infiltracion_prp")}
                                 disabled={!canEdit}
                               />
                               <Label htmlFor="treatment-infiltracion" className="font-normal">
