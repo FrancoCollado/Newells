@@ -47,6 +47,7 @@ import { LeagueTypeFilter } from "@/components/league-type-filter"
 import { ReadaptacionManager } from "@/components/readaptacion-manager"
 import { RehabilitacionManager } from "@/components/rehabilitacion-manager" // NUEVO IMPORT
 import { ProfessionalLayout } from "@/components/professional-layout"
+import { ManagerialReportDialog } from "@/components/managerial-report-dialog"
 
 const Loading = () => null;
 
@@ -85,6 +86,7 @@ export default function DashboardPage() {
   const [showIndicesModal, setShowIndicesModal] = useState(false)
   const [showCaptacionModal, setShowCaptacionModal] = useState(false)
   const [showRehabilitacionModal, setShowRehabilitacionModal] = useState(false) // NUEVO ESTADO
+  const [showManagerialReportModal, setShowManagerialReportModal] = useState(false)
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
   const [editingTrainingData, setEditingTrainingData] = useState<any | null>(null)
 
@@ -501,38 +503,49 @@ export default function DashboardPage() {
 
                     {/* Segunda fila: Botones de acciones (solo cuando hay división seleccionada) */}
                     {selectedDivision !== "all" && (
-                      <div className="flex flex-wrap gap-2">
-                        {canViewIndices && (
-                          <Button
-                            onClick={() => setShowIndicesModal(true)}
-                            variant="outline"
-                            size="sm"
-                            className="border-red-700 text-red-700 hover:bg-red-50 mb-4"
-                          >
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            Índices
-                          </Button>
-                        )}
-                        {canManageContent && hasPermission(user.role, "manage_matches") && (
-                          <Button
-                            onClick={() => router.push(`/matches/${selectedDivision}`)}
-                            size="sm"
-                            className="bg-red-700 hover:bg-red-800"
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Cargar Partido
-                          </Button>
-                        )}
-                        {canManageContent && hasPermission(user.role, "manage_trainings") && (
-                          <Button
-                            onClick={() => setShowTrainingModal(true)}
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            <Dumbbell className="h-4 w-4 mr-2" />
-                            Cargar Entrenamiento
-                          </Button>
-                        )}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2">
+                          {canViewIndices && (
+                            <Button
+                              onClick={() => setShowIndicesModal(true)}
+                              variant="outline"
+                              size="sm"
+                              className="border-red-700 text-red-700 hover:bg-red-50"
+                            >
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Índices
+                            </Button>
+                          )}
+                          {canManageContent && hasPermission(user.role, "manage_matches") && (
+                            <Button
+                              onClick={() => router.push(`/matches/${selectedDivision}`)}
+                              size="sm"
+                              className="bg-red-700 hover:bg-red-800"
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Cargar Partido
+                            </Button>
+                          )}
+                          {canManageContent && hasPermission(user.role, "manage_trainings") && (
+                            <Button
+                              onClick={() => setShowTrainingModal(true)}
+                              size="sm"
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <Dumbbell className="h-4 w-4 mr-2" />
+                              Cargar Entrenamiento
+                            </Button>
+                          )}
+                        </div>
+
+                        <Button
+                          onClick={() => setShowManagerialReportModal(true)}
+                          variant="default"
+                          className="bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-6 shadow-md transition-all hover:shadow-lg gap-2 border-b-4 border-slate-700 active:border-b-0 active:mt-1"
+                        >
+                          <FileText className="h-5 w-5" />
+                          Informe Gerencial
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -937,6 +950,13 @@ export default function DashboardPage() {
           userName={user.name}
           onClose={() => setShowRehabilitacionModal(false)}
           canEdit={user.role === "kinesiologo" || user.role === "dirigente"}
+        />
+      )}
+      {showManagerialReportModal && selectedDivision !== "all" && (
+        <ManagerialReportDialog
+          division={selectedDivision}
+          open={showManagerialReportModal}
+          onOpenChange={setShowManagerialReportModal}
         />
       )}
     </ProfessionalLayout>

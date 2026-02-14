@@ -32,6 +32,7 @@ import {
   X,
   Film,
   Link as LinkIcon,
+  Search,
 } from "lucide-react"
 import {
   type AreaReport,
@@ -302,6 +303,7 @@ export default function AreasPage() {
     { id: "psicosocial", label: "Psicosocial", icon: Brain, color: "text-pink-600" },
     { id: "odontologia", label: "Odontología", icon: HeartPulse, color: "text-teal-600" },
     { id: "videoanalisis", label: "Videoanalisis", icon: Film, color: "text-yellow-600" },
+    { id: "captacion", label: "Captación", icon: Search, color: "text-slate-600" },
   ]
 
   const areaReports = reports
@@ -322,15 +324,17 @@ export default function AreasPage() {
   return (
     <ProfessionalLayout user={user} onLogout={handleLogout}>
       <Tabs value={selectedArea} onValueChange={setSelectedArea} className="space-y-6">
-          <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-muted/50">
+          <TabsList className="grid grid-cols-5 md:flex md:flex-wrap justify-center gap-1 h-auto p-1 bg-muted/50 w-full overflow-hidden">
             {areas.map((area) => (
               <TabsTrigger 
                 key={area.id} 
                 value={area.id} 
-                className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="flex flex-col md:flex-row items-center gap-1 md:gap-2 px-1 md:px-3 py-1 md:py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm min-w-0"
               >
-                <area.icon className={`h-4 w-4 ${area.color}`} />
-                <span className="text-sm font-medium">{area.label}</span>
+                <area.icon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${area.color} shrink-0`} />
+                <span className="text-[8px] sm:text-[10px] md:text-xs font-bold md:font-medium truncate w-full md:w-auto text-center">
+                  {area.label}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
