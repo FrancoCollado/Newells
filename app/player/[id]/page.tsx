@@ -26,6 +26,7 @@ import { ExtendedPlayerDataDialog } from "@/components/extended-player-data-dial
 import { PlayerObservationsDialog } from "@/components/player-observations-dialog"
 import { PlayerLeagueStatsTabs } from "@/components/player-league-stats-tabs"
 import { OdontogramaUploader } from "@/components/odontograma-uploader"
+import { NutritionManager } from "@/components/nutrition-manager"
 import { type Odontograma } from "@/lib/odontogramas"
 import { fetchOdontogramaForPlayer } from "@/app/player/[id]/odontograma/actions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -46,6 +47,7 @@ import {
   Stethoscope,
   Users,
   MessageSquare,
+  Apple,
 } from "lucide-react"
 import { hasPermission, canViewPsychosocialData } from "@/lib/rbac"
 import { getOdontogramaByPlayerId } from "@/lib/odontogramas"
@@ -74,6 +76,7 @@ export default function PlayerDetailPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [odontograma, setOdontograma] = useState<Odontograma | null>(null)
   const [showOdontograma, setShowOdontograma] = useState(false)
+  const [showNutrition, setShowNutrition] = useState(false)
 
   const loadPlayerData = async (playerId: string) => {
     console.log("[v0] Loading player data for ID:", playerId)
@@ -332,6 +335,8 @@ export default function PlayerDetailPage() {
   const canViewPsychosocial = canViewPsychosocialData(user.role)
   const canViewOdontograma = user.role === "dirigente" || user.role === "odontologo"
   const canUploadOdontograma = user.role === "dirigente" || user.role === "odontologo"
+  const canViewNutrition = user.role === "dirigente" || user.role === "nutricionista"
+  const canEditNutrition = user.role === "dirigente" || user.role === "nutricionista"
 
   const professionalArea = getAreaFromRole(user?.role)
 
@@ -454,6 +459,16 @@ export default function PlayerDetailPage() {
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         Odontograma
+                      </Button>
+                    )}
+
+                    {canViewNutrition && (
+                      <Button
+                        onClick={() => setShowNutrition(true)}
+                        className="mt-3 w-full bg-red-600 hover:bg-red-700"
+                      >
+                        <Apple className="h-4 w-4 mr-2" />
+                        Evaluación Nutricional
                       </Button>
                     )}
                   </div>
@@ -744,9 +759,22 @@ export default function PlayerDetailPage() {
                 />
               </div>
             </div>
-          </div>
-        )}
-      </ProfessionalLayout>
-    </AuthGuard>
-  )
-}
+                    </div>
+                  )}
+          
+                  {showNutrition && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-background rounded-lg max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 shadow-2xl">
+                        <NutritionManager 
+                          player={player} 
+                          onClose={() => setShowNutrition(false)}
+                          canEdit={canEditNutrition}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </ProfessionalLayout>
+              </AuthGuard>
+            )
+          }
+          
